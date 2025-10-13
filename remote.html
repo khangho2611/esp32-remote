@@ -1,36 +1,117 @@
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-<script>
-const HOST_WSS = "wss://824c1b62a8bb468fb4d8085acb663caa.s1.eu.hivemq.cloud:8884/mqtt";
-const USER = "khangho";
-const PASS = "Khangho@123";
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ESP32 Remote</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:720px;margin:28px auto;padding:0 12px}
+    h1{font-size:28px;margin:8px 0 16px}
+    .row{margin:10px 0}
+    input,button{font-size:16px;padding:8px 10px;border-radius:10px;border:1px solid #ccc}
+    button{cursor:pointer}
+    .on{background:#16a34a;color:#fff;border:none}
+    .off{background:#dc2626;color:#fff;border:none}
+    #log{background:#0b0b0b;color:#0f0;padding:10px;border-radius:10px;height:200px;overflow:auto;white-space:pre-wrap}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .muted{color:#666}
+    .card{border:1px solid #eee;border-radius:12px;padding:12px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  </style>
+</head>
+<body>
+  <h1>ESP32 Remote</h1>
 
-const deviceId = new URL(location).searchParams.get("id") || "esp32-001";
-const CMD = `ctrl/${deviceId}/cmd`;
-const ACK = `ctrl/${deviceId}/ack`;
+  <div class="card">
+    <div class="row"><b>Connection:</b> <span id="info" class="muted">…</span></div>
+    <div class="grid">
+      <label>WSS URL<br><input id="host" placeholder="wss://...:8884/mqtt"></label>
+      <label>Device ID<br><input id="did" placeholder="esp32-001"></label>
+      <label>Username<br><input id="user" placeholder="user"></label>
+      <label>Password<br><input id="pass" placeholder="pass" type="password"></label>
+    </div>
+    <div class="row">
+      <button id="btnConnect">Connect</button>
+      <span class="muted">Topics: <code id="topics"></code></span>
+    </div>
+  </div>
 
-const log=(s)=>{const el=log.el||(log.el=document.getElementById('log')); el.textContent+=s+"\n"; el.scrollTop=el.scrollHeight;}
-const info=(s)=>document.getElementById('info').textContent=s;
+  <div class="row card" style="margin-top:14px">
+    <div class="row">
+      <button class="on"  id="on">ON</button>
+      <button class="off" id="off">OFF</button>
+      <button id="toggle">TOGGLE</button>
+      <span class="muted">State: <b id="state">?</b></span>
+    </div>
+    <pre id="log"></pre>
+  </div>
 
-const client = mqtt.connect(HOST_WSS, {
-  username: USER,
-  password: PASS,
-  clientId: "web-" + Math.random().toString(16).slice(2),
-  clean: true,
-  protocolVersion: 4,      // MQTT 3.1.1
-  connectTimeout: 10000,
-  reconnectPeriod: 2000,
-});
+  <!-- MQTT.js -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script>
+    // ---- helpers
+    const $ = s => document.querySelector(s);
+    const log = (s)=>{ const el=$("#log"); el.textContent += s + "\n"; el.scrollTop = el.scrollHeight; };
+    const setInfo = s => $("#info").textContent = s;
 
-client.on('connect', ()=>{
-  info('Connected');
-  client.subscribe(ACK, err => { if(err) log('sub error: '+err); else log('sub '+ACK); });
-});
+    // ---- read defaults from URL (?host=...&user=...&pass=...&id=esp32-001)
+    const qp = new URL(location.href).searchParams;
+    $("#host").value = qp.get("host") || "wss://824c1b62a8bb468fb4d8085acb663caa.s1.eu.hivemq.cloud:8884/mqtt";
+    $("#user").value = qp.get("user") || "khangho";
+    $("#pass").value = qp.get("pass") || "Khangho@123";
+    $("#did").value  = qp.get("id")   || "esp32-001";
 
-client.on('message', (t,m)=> log(`${t}: ${m}`));
-client.on('error', e=>{ info('MQTT error'); log(e?.message || e.toString()); });
-client.on('close', ()=> log('closed'));
-client.on('reconnect', ()=> log('reconnect...'));
+    let client = null, CMD = "", ACK = "";
 
-document.getElementById('on').onclick  = ()=> client.publish(CMD, "ON");
-document.getElementById('off').onclick = ()=> client.publish(CMD, "OFF");
-</script>
+    function connectNow(){
+      const HOST_WSS = $("#host").value.trim();
+      const USER = $("#user").value.trim();
+      const PASS = $("#pass").value;
+      const deviceId = $("#did").value.trim();
+
+      if(!HOST_WSS || !USER || !deviceId){ alert("Thiếu host/user/deviceId"); return; }
+
+      CMD = `ctrl/${deviceId}/cmd`;
+      ACK = `ctrl/${deviceId}/ack`;
+      $("#topics").textContent = `${CMD} / ${ACK}`;
+
+      if (client) { try { client.end(true); } catch(_){} client = null; }
+      setInfo("Connecting…");
+      log(`Connecting to ${HOST_WSS} as ${USER}, deviceId=${deviceId}`);
+
+      client = mqtt.connect(HOST_WSS, {
+        username: USER,
+        password: PASS,
+        clientId: "web-" + Math.random().toString(16).slice(2),
+        clean: true,
+        protocolVersion: 4,
+        connectTimeout: 10000,
+        reconnectPeriod: 2000
+      });
+
+      client.on('connect', () => {
+        setInfo('Connected');
+        client.subscribe(ACK, (err) => {
+          if (err) log("sub error: "+err); else log("subscribed: "+ACK);
+        });
+      });
+
+      client.on('message', (t, m) => {
+        log(`${t}: ${m}`);
+        if (t===ACK) { const s = String(m).trim(); if (s==="ON"||s==="OFF") $("#state").textContent = s; }
+      });
+
+      client.on('error', (e) => { setInfo('MQTT error'); log((e && e.message) ? e.message : String(e)); });
+      client.on('close', () => { setInfo('Closed'); log('closed'); });
+      client.on('reconnect', () => { setInfo('Reconnecting…'); log('reconnect…'); });
+    }
+
+    $("#btnConnect").onclick = connectNow;
+    $("#on").onclick     = ()=> client && client.publish(CMD, "ON");
+    $("#off").onclick    = ()=> client && client.publish(CMD, "OFF");
+    $("#toggle").onclick = ()=> client && client.publish(CMD, ($("#state").textContent==="ON"?"OFF":"ON"));
+
+    // auto connect on load with defaults
+    connectNow();
+  </script>
+</body>
+</html>
