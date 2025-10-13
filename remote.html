@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ESP32 Remote</title>
+<div style="font-family:system-ui;max-width:520px;margin:24px auto">
+  <h2>ESP32 Remote</h2>
+  <p id="info">Connecting…</p>
+  <button id="on">ON</button> <button id="off">OFF</button>
+  <pre id="log" style="background:#111;color:#0f0;padding:8px;height:160px;overflow:auto"></pre>
+</div>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+const HOST_WSS = "wss://824c1b62a8bb468fb4d8085acb663caa.s1.eu.hivemq.cloud:8884/mqtt";
+const USER = "khangho";
+const PASS = "admin123";
+
+const deviceId = new URL(location).searchParams.get("id") || "esp32-001";
+const CMD = `ctrl/${deviceId}/cmd`;
+const ACK = `ctrl/${deviceId}/ack`;
+
+const log=(s)=>{const el=log.el||(log.el=document.getElementById('log')); el.textContent+=s+"\n"; el.scrollTop=el.scrollHeight;}
+const info=(s)=>document.getElementById('info').textContent=s;
+
+const client = mqtt.connect(HOST_WSS, {username:USER, password:PASS, reconnectPeriod:1000});
+client.on('connect', ()=>{ info('Connected'); client.subscribe(ACK); log('sub '+ACK); });
+client.on('message', (t,m)=> log(`${t}: ${m}`));
+client.on('error', e=>{ info('MQTT error'); log(e.toString()); });
+
+document.getElementById('on').onclick  = ()=> client.publish(CMD, "ON");
+document.getElementById('off').onclick = ()=> client.publish(CMD, "OFF");
+</script>
