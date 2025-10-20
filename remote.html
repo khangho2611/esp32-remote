@@ -215,18 +215,32 @@ function connect() {
   client.on('connect', () => {
     setConnState('connected');
     log('Connected. Subscribing: ' + subTopic);
+    if (subTopic) client.subscribe(subTopic, { qos: 0 }, (err,granted) => {
+      if (err) log('Subscribe error: ' + err.message);
+      else log('Subscribed: ' + JSON.stringify(granted));
+    });
+  });
+    log('Connected. Subscribing: ' + subTopic);
     if (subTopic) client.subscribe(subTopic, { qos: 0 }, (err) => {
       if (err) log('Subscribe error: ' + err.message);
     });
   });
 
-  client.on('reconnect', () => setConnState('connecting'));
-  client.on('close',     () => setConnState('disconnected'));
-  client.on('end',       () => setConnState('disconnected'));
-  client.on('error',     (err) => { setConnState('error'); log('Error: ' + err.message); });
+  client.on('reconnect', () => { setConnState('connecting'); log('Reconnecting...'); });
+  client.on('close',     () => { setConnState('disconnected'); log('Socket closed'); });
+  client.on('end',       () => { setConnState('disconnected'); log('Client end'); });
+  client.on('error',     (err) => { setConnState('error'); log('Error: ' + (err && err.message ? err.message : String(err))); }); log('Error: ' + err.message); });
 
   client.on('message', (topic, payload) => {
     const text = new TextDecoder().decode(payload);
+    log(`← ${topic}: ${text}`);
+    try {
+      const data = JSON.parse(text);
+      updateUI(data);
+    } catch (e) {
+      log('Parse JSON failed: ' + e.message);
+    }
+  });
     log(`← ${topic}: ${text}`);
     try {
       const data = JSON.parse(text);
