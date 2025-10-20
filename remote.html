@@ -1,303 +1,207 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ESP32 Sensor Dashboard — MQTT over WSS</title>
-  <!-- Tailwind (CDN) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    :root{
-      --bg:#0f172a;          /* slate-900 */
-      --card:#0b1224;        /* custom dark card */
-      --muted:#94a3b8;       /* slate-400 */
-      --primary:#22c55e;     /* emerald-500 */
-      --accent:#38bdf8;      /* sky-400 */
-      --warn:#f59e0b;        /* amber-500 */
-      --error:#ef4444;       /* red-500 */
-      --rose:#fb7185;        /* rose-400 */
-    }
-    body{background:linear-gradient(180deg,#0b1224 0%,#0f172a 60%,#111827 100%) fixed;}
-    .glass{background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); backdrop-filter: blur(6px);}
-    .card{border-radius:1rem;padding:1rem}
-    .pill{display:inline-flex;align-items:center;gap:.5rem;border-radius:9999px;padding:.25rem .75rem;font-size:.875rem}
-    .badge{display:inline-block;border-radius:9999px;font-size:.75rem;padding:.125rem .5rem}
-    .mono{font-variant-ligatures:none}
-    input,button{outline:none}
-    input{background:#0b1224;border:1px solid rgba(255,255,255,.08);color:#e5e7eb}
-    input::placeholder{color:#64748b}
-    .btn{border-radius:.75rem;padding:.6rem 1rem;font-weight:600}
-    .btn-prim{background:var(--primary);color:#001b0e}
-    .btn-prim:hover{filter:brightness(1.1)}
-    .btn-muted{background:rgba(255,255,255,.06);color:#e5e7eb}
-    .btn-muted:hover{background:rgba(255,255,255,.1)}
-    .bar-bg{height:.75rem;border-radius:.75rem;background:rgba(255,255,255,.08)}
-    .bar{height:.75rem;border-radius:.75rem;transition:width .25s ease}
-    .title-grad{background:linear-gradient(90deg,#60a5fa 0%,#34d399 50%,#f472b6 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-  </style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ESP32 Dashboard — MQ2 / POT / DHT11</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body{background:linear-gradient(180deg,#0b1224 0%,#0f172a 60%,#111827 100%) fixed;}
+  .glass{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);backdrop-filter:blur(6px)}
+  .card{border-radius:1rem;padding:1rem}
+  .pill{display:inline-flex;align-items:center;gap:.5rem;border-radius:9999px;padding:.25rem .75rem;font-size:.875rem}
+  .badge{display:inline-block;border-radius:9999px;font-size:.75rem;padding:.125rem .5rem}
+  .mono{font-variant-ligatures:none}
+  .bar-bg{height:.75rem;border-radius:.75rem;background:rgba(255,255,255,.08)}
+  .bar{height:.75rem;border-radius:.75rem;transition:width .25s ease}
+</style>
 </head>
 <body class="text-slate-200">
-  <div class="max-w-6xl mx-auto p-6">
-    <!-- header -->
-    <header class="mb-6 flex items-center justify-between">
-      <h1 class="text-3xl md:text-4xl font-extrabold title-grad">ESP32 Sensor Dashboard</h1>
-      <div id="connStatus" class="pill glass text-slate-200">
-        <span id="connDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
-        <span id="connText">Disconnected</span>
-      </div>
-    </header>
+<div class="max-w-6xl mx-auto p-6">
+  <header class="mb-6 flex items-center justify-between">
+    <h1 class="text-3xl md:text-4xl font-extrabold"
+      style="background:linear-gradient(90deg,#60a5fa,#34d399,#f472b6);-webkit-background-clip:text;background-clip:text;color:transparent">
+      ESP32 Dashboard — MQ2 / POT / DHT11</h1>
+    <div id="connStatus" class="pill glass"><span id="connDot" class="w-2 h-2 rounded-full bg-slate-500"></span><span id="connText">Disconnected</span></div>
+  </header>
 
-    <!-- connection panel -->
-    <section class="glass card mb-6">
-      <div class="grid md:grid-cols-3 gap-4">
-        <div>
-          <label class="block text-sm text-slate-400">Broker Host (WSS)</label>
-          <input id="host" class="mt-1 w-full rounded-xl px-3 py-2" value="824c1b62a8bb468fb4d8085acb663caa.s1.eu.hivemq.cloud">
-        </div>
-        <div>
-          <label class="block text-sm text-slate-400">Port</label>
-          <input id="port" class="mt-1 w-full rounded-xl px-3 py-2" value="8884">
-        </div>
-        <div>
-          <label class="block text-sm text-slate-400">Path</label>
-          <input id="path" class="mt-1 w-full rounded-xl px-3 py-2" value="/mqtt">
-        </div>
+  <!-- Connect -->
+  <section class="glass card mb-6">
+    <div class="grid md:grid-cols-3 gap-4">
+      <div><label class="block text-sm text-slate-400">Broker Host (WSS)</label>
+        <input id="host" class="mt-1 w-full rounded-xl px-3 py-2" value="824c1b62a8bb468fb4d8085acb663caa.s1.eu.hivemq.cloud"></div>
+      <div><label class="block text-sm text-slate-400">Port</label>
+        <input id="port" class="mt-1 w-full rounded-xl px-3 py-2" value="8884"></div>
+      <div><label class="block text-sm text-slate-400">Path</label>
+        <input id="path" class="mt-1 w-full rounded-xl px-3 py-2" value="/mqtt"></div>
 
-        <div class="md:col-span-3">
-          <label class="block text-sm text-slate-400">TLS WebSocket URL (preview)</label>
-          <input id="wssPreview" class="mt-1 w-full rounded-xl px-3 py-2 mono" readonly>
-          <p class="text-xs text-slate-500 mt-1">Trình duyệt sẽ kết nối tới URL này (WSS/TLS).</p>
-        </div>
-
-        <div>
-          <label class="block text-sm text-slate-400">Client ID</label>
-          <div class="flex gap-3">
-            <input id="clientId" class="mt-1 w-full rounded-xl px-3 py-2 mono" placeholder="web-xxxxxx">
-            <button class="btn btn-muted mt-1" onclick="generateRandomId()">Random</button>
-          </div>
-        </div>
-        <div>
-          <label class="block text-sm text-slate-400">Username</label>
-          <input id="username" class="mt-1 w-full rounded-xl px-3 py-2" placeholder="your-username" value="admin123">
-        </div>
-        <div>
-          <label class="block text-sm text-slate-400">Password</label>
-          <input id="password" type="password" class="mt-1 w-full rounded-xl px-3 py-2" placeholder="••••••••">
-        </div>
-
-        <div class="md:col-span-2">
-          <label class="block text-sm text-slate-400">Subscribe Topic</label>
-          <input id="subTopic" class="mt-1 w-full rounded-xl px-3 py-2 mono" value="esp32/sensors">
-          <p class="text-xs text-slate-500 mt-1">ESP32 publish JSON 1 dòng vào topic này.</p>
-        </div>
-
-        <div class="flex items-end gap-3">
-          <button class="btn btn-muted" onclick="applyDemo()">Use Demo Broker</button>
-          <button class="btn btn-prim" onclick="connect()">Connect</button>
-          <button class="btn btn-muted" onclick="onDisconnect()">Disconnect</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- sensor cards -->
-    <section class="grid md:grid-cols-3 gap-4">
-      <!-- MQ-2 -->
-      <div class="glass card">
-        <div class="flex items-center justify-between">
-          <h2 class="font-semibold text-sky-300">MQ-2 Smoke</h2>
-          <span id="mq2RawBadge" class="badge" style="background:rgba(56,189,248,.2);color:#bae6fd">raw: --</span>
-        </div>
-        <div class="mt-4">
-          <div class="flex items-baseline gap-2">
-            <div id="mq2Lvl" class="text-3xl font-bold">--%</div>
-            <div id="mq2Volt" class="text-sm text-slate-400">-- V</div>
-          </div>
-          <div class="bar-bg mt-3">
-            <div id="mq2Bar" class="bar" style="width:0%;background:linear-gradient(90deg,#fb7185,#ef4444)"></div>
-          </div>
-        </div>
+      <div class="md:col-span-3">
+        <label class="block text-sm text-slate-400">TLS WebSocket URL (preview)</label>
+        <input id="wssPreview" class="mt-1 w-full rounded-xl px-3 py-2 mono" readonly>
       </div>
 
-      <!-- POT -->
-      <div class="glass card">
-        <div class="flex items-center justify-between">
-          <h2 class="font-semibold text-emerald-300">Potentiometer</h2>
-          <span id="potRawBadge" class="badge" style="background:rgba(16,185,129,.2);color:#a7f3d0">raw: --</span>
-        </div>
-        <div class="mt-4">
-          <div class="flex items-baseline gap-2">
-            <div id="potPct" class="text-3xl font-bold">--%</div>
-            <div id="potVolt" class="text-sm text-slate-400">-- V</div>
-          </div>
-          <div class="bar-bg mt-3">
-            <div id="potBar" class="bar" style="width:0%;background:linear-gradient(90deg,#34d399,#22c55e)"></div>
-          </div>
+      <div><label class="block text-sm text-slate-400">Client ID</label>
+        <div class="flex gap-3">
+          <input id="clientId" class="mt-1 w-full rounded-xl px-3 py-2 mono" placeholder="web-xxxxxx">
+          <button class="mt-1 px-3 py-2 rounded-xl bg-slate-100/10 hover:bg-slate-100/20" onclick="generateRandomId()">Random</button>
         </div>
       </div>
+      <div><label class="block text-sm text-slate-400">Username</label>
+        <input id="username" class="mt-1 w-full rounded-xl px-3 py-2" placeholder="your-username" value="admin123"></div>
+      <div><label class="block text-sm text-slate-400">Password</label>
+        <input id="password" type="password" class="mt-1 w-full rounded-xl px-3 py-2" placeholder="••••••••"></div>
 
-      <!-- WATER -->
-      <div class="glass card">
-        <div class="flex items-center justify-between">
-          <h2 class="font-semibold text-indigo-300">Water Sensor</h2>
-          <span id="waterMode" class="badge" style="background:rgba(99,102,241,.2);color:#c7d2fe">mode: --</span>
+      <div class="md:col-span-2">
+        <label class="block text-sm text-slate-400">Subscribe Topic</label>
+        <input id="subTopic" class="mt-1 w-full rounded-xl px-3 py-2 mono" value="esp32/sensors">
+      </div>
+      <div class="flex items-end gap-3">
+        <button class="px-4 py-2 rounded-xl bg-slate-100/10 hover:bg-slate-100/20" onclick="applyDemo()">Use Demo Broker</button>
+        <button class="px-4 py-2 rounded-xl bg-emerald-500 text-black hover:brightness-110" onclick="connect()">Connect</button>
+        <button class="px-4 py-2 rounded-xl bg-slate-100/10 hover:bg-slate-100/20" onclick="onDisconnect()">Disconnect</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cards -->
+  <section class="grid md:grid-cols-3 gap-4">
+    <!-- MQ-2 -->
+    <div class="glass card">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold text-sky-300">MQ-2 Smoke</h2>
+        <span id="mq2RawBadge" class="badge" style="background:rgba(56,189,248,.2);color:#bae6fd">raw: --</span>
+      </div>
+      <div class="mt-4">
+        <div class="flex items-baseline gap-2">
+          <div id="mq2Lvl" class="text-3xl font-bold">--%</div>
+          <div id="mq2Volt" class="text-sm text-slate-400">-- V</div>
         </div>
-        <div id="waterAnalog" class="mt-4">
-          <div class="flex items-baseline gap-2">
-            <div id="waterPct" class="text-3xl font-bold">--%</div>
-            <div id="waterVolt" class="text-sm text-slate-400">-- V</div>
-          </div>
-          <div class="bar-bg mt-3">
-            <div id="waterBar" class="bar" style="width:0%;background:linear-gradient(90deg,#60a5fa,#38bdf8)"></div>
-          </div>
-          <div class="mt-2 text-sm text-slate-400">raw: <span id="waterRaw">--</span></div>
+        <div class="bar-bg mt-3"><div id="mq2Bar" class="bar" style="width:0%;background:linear-gradient(90deg,#fb7185,#ef4444)"></div></div>
+      </div>
+    </div>
+
+    <!-- POT -->
+    <div class="glass card">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold text-emerald-300">Potentiometer</h2>
+        <span id="potRawBadge" class="badge" style="background:rgba(16,185,129,.2);color:#a7f3d0">raw: --</span>
+      </div>
+      <div class="mt-4">
+        <div class="flex items-baseline gap-2">
+          <div id="potPct" class="text-3xl font-bold">--%</div>
+          <div id="potVolt" class="text-sm text-slate-400">-- V</div>
         </div>
-        <div id="waterDigital" class="mt-4 hidden">
-          <div id="waterDO" class="text-2xl font-bold">--</div>
-          <p class="text-sm text-slate-400">0/1 (tuỳ module đảo mức)</p>
+        <div class="bar-bg mt-3"><div id="potBar" class="bar" style="width:0%;background:linear-gradient(90deg,#34d399,#22c55e)"></div></div>
+      </div>
+    </div>
+
+    <!-- DHT11 -->
+    <div class="glass card">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold text-indigo-300">DHT11</h2>
+        <span id="dhtOk" class="badge" style="background:rgba(99,102,241,.2);color:#c7d2fe">--</span>
+      </div>
+      <div class="mt-4 grid grid-cols-2 gap-4">
+        <div>
+          <div class="text-sm text-slate-400">Temperature</div>
+          <div id="dhtTemp" class="text-3xl font-bold">--°C</div>
+        </div>
+        <div>
+          <div class="text-sm text-slate-400">Humidity</div>
+          <div id="dhtHum" class="text-3xl font-bold">--%</div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- console -->
-    <section class="glass card mt-6">
-      <div class="flex items-center justify-between mb-2">
-        <h3 class="font-semibold text-slate-300">Console</h3>
-        <button class="btn btn-muted" onclick="onClear()">Clear</button>
-      </div>
-      <pre id="log" class="whitespace-pre-wrap text-sm bg-[#0b1224] border border-slate-700 rounded-xl p-3 h-64 overflow-y-auto mono text-slate-300"></pre>
-    </section>
-  </div>
+  <!-- Console -->
+  <section class="glass card mt-6">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-semibold text-slate-300">Console</h3>
+      <button class="px-3 py-1 rounded-lg bg-slate-100/10 hover:bg-slate-100/20" onclick="onClear()">Clear</button>
+    </div>
+    <pre id="log" class="whitespace-pre-wrap text-sm bg-[#0b1224] border border-slate-700 rounded-xl p-3 h-64 overflow-y-auto mono text-slate-300"></pre>
+  </section>
+</div>
 
-  <!-- MQTT.js (2 CDN dự phòng) -->
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+<!-- MQTT.js (2 CDN) -->
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
 
-  <!-- main js: ASCII-only, no fancy quotes -->
-  <script>
-  function $(id){return document.getElementById(id);}
-  function log(msg){var el=$("log"); if(!el) return; var t=new Date().toLocaleTimeString(); el.textContent+="["+t+"] "+msg+"\\n"; el.scrollTop=el.scrollHeight;}
-  log("[BOOT] page loaded");
-  window.addEventListener("error",function(e){log("[JS-ERROR] "+e.message);});
+<script>
+// ===== utils =====
+function $(id){return document.getElementById(id);}
+function log(msg){var el=$("log"); if(!el) return; var t=new Date().toLocaleTimeString(); el.textContent+="["+t+"] "+msg+"\\n"; el.scrollTop=el.scrollHeight;}
+log("[BOOT] page loaded");
+window.addEventListener("error",e=>log("[JS-ERROR] "+e.message));
 
-  var client=null;
+var client=null;
+function setConnState(s){var dot=$("connDot"),txt=$("connText"),pill=$("connStatus");
+  pill.className="pill glass"; dot.className="w-2 h-2 rounded-full";
+  if(s==="connected"){ pill.classList.add("bg-emerald-900/40"); dot.classList.add("bg-emerald-400"); txt.textContent="Connected";}
+  else if(s==="connecting"){ pill.classList.add("bg-amber-900/40"); dot.classList.add("bg-amber-400"); txt.textContent="Connecting...";}
+  else if(s==="error"){ pill.classList.add("bg-red-900/40"); dot.classList.add("bg-red-400"); txt.textContent="Error";}
+  else { pill.classList.add("bg-slate-800/60"); dot.classList.add("bg-slate-500"); txt.textContent="Disconnected";}}
+function updatePreview(){var host=$("host").value.trim();var port=parseInt($("port").value.trim(),10)||8884;var path=$("path").value.trim()||"/mqtt";$("wssPreview").value=host?("wss://"+host+":"+port+path):"";}
+function generateRandomId(){$("clientId").value="web-"+Math.random().toString(16).slice(2,8); log("Generated ClientID");}
+function applyDemo(){$("host").value="broker.hivemq.com";$("port").value="8884";$("path").value="/mqtt";$("username").value="";$("password").value="";$("subTopic").value="test/web/"+Math.random().toString(16).slice(2,6);updatePreview();log("Demo presets applied. Click Connect.");}
+function onClear(){var el=$("log"); if(el) el.textContent="";}
+function onDisconnect(){try{ if(client){ client.end(true); log("Disconnected"); } }catch(e){}}
 
-  function setConnState(state){
-    var dot=$("connDot"), text=$("connText"), pill=$("connStatus");
-    if(!dot||!pill||!text) return;
-    pill.className="pill glass text-slate-200"; dot.className="w-2 h-2 rounded-full";
-    if(state==="connected"){ pill.classList.add("bg-emerald-900/40"); dot.classList.add("bg-emerald-400"); text.textContent="Connected"; }
-    else if(state==="connecting"){ pill.classList.add("bg-amber-900/40"); dot.classList.add("bg-amber-400"); text.textContent="Connecting..."; }
-    else if(state==="error"){ pill.classList.add("bg-red-900/40"); dot.classList.add("bg-red-400"); text.textContent="Error"; }
-    else { pill.classList.add("bg-slate-800/60"); dot.classList.add("bg-slate-500"); text.textContent="Disconnected"; }
+function connect(){
+  updatePreview();
+  var host=$("host").value.trim(); var port=parseInt($("port").value.trim(),10)||8884;
+  var path=$("path").value.trim()||"/mqtt"; var clientId=$("clientId").value.trim()||("web-"+Math.random().toString(16).slice(2,8));
+  var username=$("username").value.trim(); var password=$("password").value; var subTopic=$("subTopic").value.trim();
+  if(!host){ alert("Please enter broker host"); return; }
+  var url="wss://"+host+":"+port+path; log("Connecting to "+url+" as "+clientId+" ..."); setConnState("connecting");
+  if(client){ try{ client.end(true);}catch(e){} }
+  var MQTT = window.mqtt || window.MQTT || mqtt;
+  if(typeof MQTT==="undefined"){ setConnState("error"); log("[ERROR] mqtt library not loaded"); return; }
+  client = MQTT.connect(url,{clientId:clientId,username:username||undefined,password:password||undefined,clean:true,reconnectPeriod:4000,connectTimeout:15000});
+  client.on("connect",function(){setConnState("connected"); log("Connected. Subscribing: "+subTopic);
+    if(subTopic){ client.subscribe(subTopic,{qos:0},function(err,g){ if(err) log("Subscribe error: "+err.message); else log("Subscribed: "+JSON.stringify(g));}); }
+  });
+  client.on("reconnect",function(){setConnState("connecting"); log("Reconnecting...");});
+  client.on("close",function(){setConnState("disconnected"); log("Socket closed");});
+  client.on("end",function(){setConnState("disconnected"); log("Client end");});
+  client.on("error",function(err){setConnState("error"); log("Error: "+(err&&err.message?err.message:String(err)));});
+  client.on("message",function(topic,payload){
+    var text; try{ text=new TextDecoder().decode(payload);}catch(_){ text=String(payload);}
+    log("<= "+topic+": "+text);
+    try{ var data=JSON.parse(text); updateUI(data);}catch(e){ log("Parse JSON failed: "+e.message); }
+  });
+}
+
+function updateUI(data){
+  // MQ2
+  if(data.mq2){
+    var lvl=(typeof data.mq2.lvl==="number")?Math.max(0,Math.min(100,data.mq2.lvl)):0;
+    $("mq2Lvl").textContent=(isFinite(lvl)?lvl.toFixed(0):"--")+"%";
+    if(typeof data.mq2.v==="number") $("mq2Volt").textContent=data.mq2.v.toFixed(3)+" V";
+    if(typeof data.mq2.raw==="number") $("mq2RawBadge").textContent="raw: "+data.mq2.raw;
+    $("mq2Bar").style.width=lvl+"%";
   }
-
-  function updatePreview(){
-    var host=$("host").value.trim();
-    var port=parseInt($("port").value.trim(),10)||8884;
-    var path=$("path").value.trim()||"/mqtt";
-    var url=host?("wss://"+host+":"+port+path):"";
-    var el=$("wssPreview"); if(el) el.value=url;
+  // POT
+  if(data.pot){
+    var pct=(typeof data.pot.pct==="number")?Math.max(0,Math.min(100,data.pot.pct)):0;
+    $("potPct").textContent=(isFinite(pct)?pct.toFixed(0):"--")+"%";
+    if(typeof data.pot.v==="number") $("potVolt").textContent=data.pot.v.toFixed(3)+" V";
+    if(typeof data.pot.raw==="number") $("potRawBadge").textContent="raw: "+data.pot.raw;
+    $("potBar").style.width=pct+"%";
   }
-
-  function generateRandomId(){ $("clientId").value="web-"+Math.random().toString(16).slice(2,8); log("Generated ClientID"); }
-  function applyDemo(){
-    $("host").value="broker.hivemq.com";
-    $("port").value="8884";
-    $("path").value="/mqtt";
-    $("username").value="";
-    $("password").value="";
-    $("subTopic").value="test/web/"+Math.random().toString(16).slice(2,6);
-    updatePreview(); log("Demo presets applied. Click Connect.");
+  // DHT
+  if(data.dht){
+    var ok = !!data.dht.ok;
+    $("dhtOk").textContent = ok ? "OK" : "READ FAIL";
+    if(typeof data.dht.t==="number") $("dhtTemp").textContent=data.dht.t.toFixed(1)+"°C";
+    else $("dhtTemp").textContent="--°C";
+    if(typeof data.dht.h==="number") $("dhtHum").textContent=data.dht.h.toFixed(0)+"%";
+    else $("dhtHum").textContent="--%";
   }
-  function onClear(){ var el=$("log"); if(el) el.textContent=""; }
-  function onDisconnect(){ try{ if(client){ client.end(true); log("Disconnected"); } }catch(e){} }
+}
 
-  function connect(){
-    updatePreview();
-    var host=$("host").value.trim();
-    var port=parseInt($("port").value.trim(),10)||8884;
-    var path=$("path").value.trim()||"/mqtt";
-    var clientId=$("clientId").value.trim()||("web-"+Math.random().toString(16).slice(2,8));
-    var username=$("username").value.trim();
-    var password=$("password").value;
-    var subTopic=$("subTopic").value.trim();
-    if(!host){ alert("Please enter broker host"); return; }
-
-    var url="wss://"+host+":"+port+path;
-    log("Connecting to "+url+" as "+clientId+" ...");
-    setConnState("connecting");
-
-    if(client){ try{ client.end(true); }catch(e){} }
-
-    var MQTT = window.mqtt || window.MQTT || mqtt;
-    if(typeof MQTT==="undefined"){ setConnState("error"); log("[ERROR] mqtt library not loaded"); return; }
-
-    client = MQTT.connect(url,{
-      clientId: clientId,
-      username: username || undefined,
-      password: password || undefined,
-      clean: true,
-      reconnectPeriod: 4000,
-      connectTimeout: 15000
-    });
-
-    client.on("connect", function(){
-      setConnState("connected");
-      log("Connected. Subscribing: "+subTopic);
-      if(subTopic){
-        client.subscribe(subTopic,{qos:0},function(err,granted){
-          if(err) log("Subscribe error: "+err.message);
-          else log("Subscribed: "+JSON.stringify(granted));
-        });
-      }
-    });
-    client.on("reconnect", function(){ setConnState("connecting"); log("Reconnecting..."); });
-    client.on("close", function(){ setConnState("disconnected"); log("Socket closed"); });
-    client.on("end", function(){ setConnState("disconnected"); log("Client end"); });
-    client.on("error", function(err){ setConnState("error"); log("Error: "+(err&&err.message?err.message:String(err))); });
-
-    client.on("message", function(topic, payload){
-      var text; try{ text=new TextDecoder().decode(payload); }catch(_){ text=String(payload); }
-      log("<= "+topic+": "+text);
-      try{ var data=JSON.parse(text); updateUI(data); }catch(e){ log("Parse JSON failed: "+e.message); }
-    });
-  }
-
-  function updateUI(data){
-    if(data.mq2){
-      var lvl=(typeof data.mq2.lvl==="number")?Math.max(0,Math.min(100,data.mq2.lvl)):0;
-      $("mq2Lvl").textContent=(isFinite(lvl)?lvl.toFixed(0):"--")+"%";
-      if(typeof data.mq2.v==="number") $("mq2Volt").textContent=data.mq2.v.toFixed(3)+" V";
-      if(typeof data.mq2.raw==="number") $("mq2RawBadge").textContent="raw: "+data.mq2.raw;
-      $("mq2Bar").style.width=lvl+"%";
-    }
-    if(data.pot){
-      var pct=(typeof data.pot.pct==="number")?Math.max(0,Math.min(100,data.pot.pct)):0;
-      $("potPct").textContent=(isFinite(pct)?pct.toFixed(0):"--")+"%";
-      if(typeof data.pot.v==="number") $("potVolt").textContent=data.pot.v.toFixed(3)+" V";
-      if(typeof data.pot.raw==="number") $("potRawBadge").textContent="raw: "+data.pot.raw;
-      $("potBar").style.width=pct+"%";
-    }
-    if(data.water){
-      var mode=String(data.water.mode||"").toLowerCase();
-      $("waterMode").textContent="mode: "+(mode||"unknown");
-      var analog=$("waterAnalog"), digital=$("waterDigital");
-      if(mode==="analog"){
-        analog.classList.remove("hidden"); digital.classList.add("hidden");
-        var wp=(typeof data.water.pct==="number")?Math.max(0,Math.min(100,data.water.pct)):0;
-        $("waterPct").textContent=wp.toFixed(0)+"%";
-        if(typeof data.water.v==="number") $("waterVolt").textContent=data.water.v.toFixed(3)+" V";
-        if(typeof data.water.raw==="number") $("waterRaw").textContent=String(data.water.raw);
-        $("waterBar").style.width=wp+"%";
-      } else if(mode==="digital"){
-        analog.classList.add("hidden"); digital.classList.remove("hidden");
-        $("waterDO").textContent=(data.water.do===0||data.water.do===1)?String(data.water.do):"--";
-      }
-    }
-  }
-
-  // init default
-  (function(){ generateRandomId(); updatePreview(); ["host","port","path"].forEach(function(id){ var el=$(id); if(el) el.addEventListener("input",updatePreview); }); })();
-  </script>
+// init
+(function(){ generateRandomId(); updatePreview(); ["host","port","path"].forEach(id=>{ var el=$(id); if(el) el.addEventListener("input",updatePreview); }); })();
+</script>
 </body>
 </html>
