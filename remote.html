@@ -21,10 +21,13 @@
     <h1 class="text-3xl md:text-4xl font-extrabold"
       style="background:linear-gradient(90deg,#60a5fa,#34d399,#f472b6);-webkit-background-clip:text;background-clip:text;color:transparent">
       ESP32 Dashboard — MQ2 / POT / DHT11</h1>
-    <div id="connStatus" class="pill glass"><span id="connDot" class="w-2 h-2 rounded-full bg-slate-500"></span><span id="connText">Disconnected</span></div>
+    <div id="connStatus" class="pill glass">
+      <span id="connDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+      <span id="connText">Disconnected</span>
+    </div>
   </header>
 
-  <!-- Connect -->
+  <!-- Kết nối -->
   <section class="glass card mb-6">
     <div class="grid md:grid-cols-3 gap-4">
       <div><label class="block text-sm text-slate-400">Broker Host (WSS)</label>
@@ -39,7 +42,8 @@
         <input id="wssPreview" class="mt-1 w-full rounded-xl px-3 py-2 mono" readonly>
       </div>
 
-      <div><label class="block text-sm text-slate-400">Client ID</label>
+      <div>
+        <label class="block text-sm text-slate-400">Client ID</label>
         <div class="flex gap-3">
           <input id="clientId" class="mt-1 w-full rounded-xl px-3 py-2 mono" placeholder="web-xxxxxx">
           <button class="mt-1 px-3 py-2 rounded-xl bg-slate-100/10 hover:bg-slate-100/20" onclick="generateRandomId()">Random</button>
@@ -62,7 +66,7 @@
     </div>
   </section>
 
-  <!-- Cards -->
+  <!-- Thẻ cảm biến -->
   <section class="grid md:grid-cols-3 gap-4">
     <!-- MQ-2 -->
     <div class="glass card">
@@ -189,14 +193,12 @@ function updateUI(data){
     if(typeof data.pot.raw==="number") $("potRawBadge").textContent="raw: "+data.pot.raw;
     $("potBar").style.width=pct+"%";
   }
-  // DHT
+  // DHT11
   if(data.dht){
     var ok = !!data.dht.ok;
     $("dhtOk").textContent = ok ? "OK" : "READ FAIL";
-    if(typeof data.dht.t==="number") $("dhtTemp").textContent=data.dht.t.toFixed(1)+"°C";
-    else $("dhtTemp").textContent="--°C";
-    if(typeof data.dht.h==="number") $("dhtHum").textContent=data.dht.h.toFixed(0)+"%";
-    else $("dhtHum").textContent="--%";
+    $("dhtTemp").textContent = (typeof data.dht.t==="number") ? data.dht.t.toFixed(1)+"°C" : "--°C";
+    $("dhtHum").textContent  = (typeof data.dht.h==="number") ? data.dht.h.toFixed(0)+"%"  : "--%";
   }
 }
 
