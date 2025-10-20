@@ -1,137 +1,170 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>ESP32 Sensor Dashboard — MQTT over WSS</title>
-  <!-- Tailwind -->
+  <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .card{border-radius:1rem;box-shadow:0 6px 18px rgba(2,6,23,.06);padding:1.25rem;background:#fff}
+    :root{
+      --bg:#0f172a;          /* slate-900 */
+      --card:#0b1224;        /* custom dark card */
+      --muted:#94a3b8;       /* slate-400 */
+      --primary:#22c55e;     /* emerald-500 */
+      --accent:#38bdf8;      /* sky-400 */
+      --warn:#f59e0b;        /* amber-500 */
+      --error:#ef4444;       /* red-500 */
+      --rose:#fb7185;        /* rose-400 */
+    }
+    body{background:linear-gradient(180deg,#0b1224 0%,#0f172a 60%,#111827 100%) fixed;}
+    .glass{background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); backdrop-filter: blur(6px);}
+    .card{border-radius:1rem;padding:1rem}
     .pill{display:inline-flex;align-items:center;gap:.5rem;border-radius:9999px;padding:.25rem .75rem;font-size:.875rem}
     .badge{display:inline-block;border-radius:9999px;font-size:.75rem;padding:.125rem .5rem}
     .mono{font-variant-ligatures:none}
+    input,button{outline:none}
+    input{background:#0b1224;border:1px solid rgba(255,255,255,.08);color:#e5e7eb}
+    input::placeholder{color:#64748b}
+    .btn{border-radius:.75rem;padding:.6rem 1rem;font-weight:600}
+    .btn-prim{background:var(--primary);color:#001b0e}
+    .btn-prim:hover{filter:brightness(1.1)}
+    .btn-muted{background:rgba(255,255,255,.06);color:#e5e7eb}
+    .btn-muted:hover{background:rgba(255,255,255,.1)}
+    .bar-bg{height:.75rem;border-radius:.75rem;background:rgba(255,255,255,.08)}
+    .bar{height:.75rem;border-radius:.75rem;transition:width .25s ease}
+    .title-grad{background:linear-gradient(90deg,#60a5fa 0%,#34d399 50%,#f472b6 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
   </style>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-800">
+<body class="text-slate-200">
   <div class="max-w-6xl mx-auto p-6">
+    <!-- header -->
     <header class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl md:text-3xl font-bold">ESP32 Sensor Dashboard</h1>
-      <div id="connStatus" class="pill bg-slate-200 text-slate-700">
-        <span id="connDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+      <h1 class="text-3xl md:text-4xl font-extrabold title-grad">ESP32 Sensor Dashboard</h1>
+      <div id="connStatus" class="pill glass text-slate-200">
+        <span id="connDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
         <span id="connText">Disconnected</span>
       </div>
     </header>
 
-    <!-- Connection Panel -->
-    <section class="card mb-6">
+    <!-- connection panel -->
+    <section class="glass card mb-6">
       <div class="grid md:grid-cols-3 gap-4">
         <div>
-          <label class="block text-sm font-medium">Broker Host (WSS)</label>
-          <input id="host" class="mt-1 w-full border rounded-xl px-3 py-2" value="824c1b62a8bb468fb4d8085acb663caa.s1.eu.hivemq.cloud" />
+          <label class="block text-sm text-slate-400">Broker Host (WSS)</label>
+          <input id="host" class="mt-1 w-full rounded-xl px-3 py-2" value="824c1b62a8bb468fb4d8085acb663caa.s1.eu.hivemq.cloud">
         </div>
         <div>
-          <label class="block text-sm font-medium">Port</label>
-          <input id="port" class="mt-1 w-full border rounded-xl px-3 py-2" value="8884" />
+          <label class="block text-sm text-slate-400">Port</label>
+          <input id="port" class="mt-1 w-full rounded-xl px-3 py-2" value="8884">
         </div>
         <div>
-          <label class="block text-sm font-medium">Path</label>
-          <input id="path" class="mt-1 w-full border rounded-xl px-3 py-2" value="/mqtt" />
+          <label class="block text-sm text-slate-400">Path</label>
+          <input id="path" class="mt-1 w-full rounded-xl px-3 py-2" value="/mqtt">
         </div>
 
         <div class="md:col-span-3">
-          <label class="block text-sm font-medium">TLS WebSocket URL (preview)</label>
-          <input id="wssPreview" class="mt-1 w-full border rounded-xl px-3 py-2 mono" readonly />
-          <p class="text-xs text-slate-500 mt-1">Trình duyệt sẽ kết nối qua URL này (WSS/TLS).</p>
+          <label class="block text-sm text-slate-400">TLS WebSocket URL (preview)</label>
+          <input id="wssPreview" class="mt-1 w-full rounded-xl px-3 py-2 mono" readonly>
+          <p class="text-xs text-slate-500 mt-1">Trình duyệt sẽ kết nối tới URL này (WSS/TLS).</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium">Client ID</label>
+          <label class="block text-sm text-slate-400">Client ID</label>
           <div class="flex gap-3">
-            <input id="clientId" class="mt-1 w-full border rounded-xl px-3 py-2 mono" placeholder="web-xxxxxx" />
-            <button class="mt-1 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200" onclick="generateRandomId()">Random</button>
+            <input id="clientId" class="mt-1 w-full rounded-xl px-3 py-2 mono" placeholder="web-xxxxxx">
+            <button class="btn btn-muted mt-1" onclick="generateRandomId()">Random</button>
           </div>
         </div>
         <div>
-          <label class="block text-sm font-medium">Username</label>
-          <input id="username" class="mt-1 w-full border rounded-xl px-3 py-2" placeholder="your-username" value="admin123" />
+          <label class="block text-sm text-slate-400">Username</label>
+          <input id="username" class="mt-1 w-full rounded-xl px-3 py-2" placeholder="your-username" value="admin123">
         </div>
         <div>
-          <label class="block text-sm font-medium">Password</label>
-          <input id="password" type="password" class="mt-1 w-full border rounded-xl px-3 py-2" placeholder="••••••••" />
+          <label class="block text-sm text-slate-400">Password</label>
+          <input id="password" type="password" class="mt-1 w-full rounded-xl px-3 py-2" placeholder="••••••••">
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-sm font-medium">Subscribe Topic</label>
-          <input id="subTopic" class="mt-1 w-full border rounded-xl px-3 py-2 mono" value="esp32/sensors" />
+          <label class="block text-sm text-slate-400">Subscribe Topic</label>
+          <input id="subTopic" class="mt-1 w-full rounded-xl px-3 py-2 mono" value="esp32/sensors">
           <p class="text-xs text-slate-500 mt-1">ESP32 publish JSON 1 dòng vào topic này.</p>
         </div>
 
         <div class="flex items-end gap-3">
-          <button class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200" onclick="applyDemo()">Use Demo Broker</button>
-          <button id="btnConnect" class="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" onclick="connect()">Connect</button>
-          <button class="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300" onclick="onDisconnect()">Disconnect</button>
+          <button class="btn btn-muted" onclick="applyDemo()">Use Demo Broker</button>
+          <button class="btn btn-prim" onclick="connect()">Connect</button>
+          <button class="btn btn-muted" onclick="onDisconnect()">Disconnect</button>
         </div>
       </div>
     </section>
 
-    <!-- Sensor Cards -->
+    <!-- sensor cards -->
     <section class="grid md:grid-cols-3 gap-4">
-      <div class="card">
+      <!-- MQ-2 -->
+      <div class="glass card">
         <div class="flex items-center justify-between">
-          <h2 class="font-semibold">MQ-2 Smoke</h2>
-          <span id="mq2RawBadge" class="badge bg-slate-200">raw: --</span>
+          <h2 class="font-semibold text-sky-300">MQ-2 Smoke</h2>
+          <span id="mq2RawBadge" class="badge" style="background:rgba(56,189,248,.2);color:#bae6fd">raw: --</span>
         </div>
         <div class="mt-4">
           <div class="flex items-baseline gap-2">
             <div id="mq2Lvl" class="text-3xl font-bold">--%</div>
-            <div id="mq2Volt" class="text-sm text-slate-500">-- V</div>
+            <div id="mq2Volt" class="text-sm text-slate-400">-- V</div>
           </div>
-          <div class="mt-3 h-3 bg-slate-200 rounded-full"><div id="mq2Bar" class="h-3 bg-rose-500 rounded-full" style="width:0%"></div></div>
+          <div class="bar-bg mt-3">
+            <div id="mq2Bar" class="bar" style="width:0%;background:linear-gradient(90deg,#fb7185,#ef4444)"></div>
+          </div>
         </div>
       </div>
 
-      <div class="card">
+      <!-- POT -->
+      <div class="glass card">
         <div class="flex items-center justify-between">
-          <h2 class="font-semibold">Potentiometer</h2>
-          <span id="potRawBadge" class="badge bg-slate-200">raw: --</span>
+          <h2 class="font-semibold text-emerald-300">Potentiometer</h2>
+          <span id="potRawBadge" class="badge" style="background:rgba(16,185,129,.2);color:#a7f3d0">raw: --</span>
         </div>
         <div class="mt-4">
           <div class="flex items-baseline gap-2">
             <div id="potPct" class="text-3xl font-bold">--%</div>
-            <div id="potVolt" class="text-sm text-slate-500">-- V</div>
+            <div id="potVolt" class="text-sm text-slate-400">-- V</div>
           </div>
-          <div class="mt-3 h-3 bg-slate-200 rounded-full"><div id="potBar" class="h-3 bg-sky-500 rounded-full" style="width:0%"></div></div>
+          <div class="bar-bg mt-3">
+            <div id="potBar" class="bar" style="width:0%;background:linear-gradient(90deg,#34d399,#22c55e)"></div>
+          </div>
         </div>
       </div>
 
-      <div class="card">
+      <!-- WATER -->
+      <div class="glass card">
         <div class="flex items-center justify-between">
-          <h2 class="font-semibold">Water Sensor</h2>
-          <span id="waterMode" class="badge bg-indigo-100 text-indigo-700">mode: --</span>
+          <h2 class="font-semibold text-indigo-300">Water Sensor</h2>
+          <span id="waterMode" class="badge" style="background:rgba(99,102,241,.2);color:#c7d2fe">mode: --</span>
         </div>
         <div id="waterAnalog" class="mt-4">
           <div class="flex items-baseline gap-2">
             <div id="waterPct" class="text-3xl font-bold">--%</div>
-            <div id="waterVolt" class="text-sm text-slate-500">-- V</div>
+            <div id="waterVolt" class="text-sm text-slate-400">-- V</div>
           </div>
-          <div class="mt-3 h-3 bg-slate-200 rounded-full"><div id="waterBar" class="h-3 bg-emerald-500 rounded-full" style="width:0%"></div></div>
-          <div class="mt-2 text-sm text-slate-500">raw: <span id="waterRaw">--</span></div>
+          <div class="bar-bg mt-3">
+            <div id="waterBar" class="bar" style="width:0%;background:linear-gradient(90deg,#60a5fa,#38bdf8)"></div>
+          </div>
+          <div class="mt-2 text-sm text-slate-400">raw: <span id="waterRaw">--</span></div>
         </div>
         <div id="waterDigital" class="mt-4 hidden">
           <div id="waterDO" class="text-2xl font-bold">--</div>
-          <p class="text-sm text-slate-500">0/1 (tuỳ module đảo mức)</p>
+          <p class="text-sm text-slate-400">0/1 (tuỳ module đảo mức)</p>
         </div>
       </div>
     </section>
 
-    <!-- Console -->
-    <section class="card mt-6">
+    <!-- console -->
+    <section class="glass card mt-6">
       <div class="flex items-center justify-between mb-2">
-        <h3 class="font-semibold">Console</h3>
-        <button id="btnClear" class="text-sm px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200" onclick="onClear()">Clear</button>
+        <h3 class="font-semibold text-slate-300">Console</h3>
+        <button class="btn btn-muted" onclick="onClear()">Clear</button>
       </div>
-      <pre id="log" class="whitespace-pre-wrap text-sm bg-slate-50 border rounded-xl p-3 h-64 overflow-y-auto mono"></pre>
+      <pre id="log" class="whitespace-pre-wrap text-sm bg-[#0b1224] border border-slate-700 rounded-xl p-3 h-64 overflow-y-auto mono text-slate-300"></pre>
     </section>
   </div>
 
@@ -139,74 +172,65 @@
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
 
-  <!-- Main JS -->
+  <!-- main js: ASCII-only, no fancy quotes -->
   <script>
-  // ===== UTIL =====
-  function $(id){ return document.getElementById(id); }
-  function log(msg){ var el=$('log'); if(!el) return; var t=new Date().toLocaleTimeString(); el.textContent += "["+t+"] "+msg+"\\n"; el.scrollTop=el.scrollHeight; }
-  log("[BOOT] inline script loaded");
-  window.addEventListener('error', e=>{ log("[JS-ERROR] "+e.message); });
+  function $(id){return document.getElementById(id);}
+  function log(msg){var el=$("log"); if(!el) return; var t=new Date().toLocaleTimeString(); el.textContent+="["+t+"] "+msg+"\\n"; el.scrollTop=el.scrollHeight;}
+  log("[BOOT] page loaded");
+  window.addEventListener("error",function(e){log("[JS-ERROR] "+e.message);});
 
-  var client = null;
+  var client=null;
 
   function setConnState(state){
-    var dot=$('connDot'), text=$('connText'), pill=$('connStatus');
+    var dot=$("connDot"), text=$("connText"), pill=$("connStatus");
     if(!dot||!pill||!text) return;
-    pill.className="pill"; dot.className="w-2 h-2 rounded-full";
-    if(state==="connected"){ pill.classList.add("bg-emerald-100","text-emerald-700"); dot.classList.add("bg-emerald-500"); text.textContent="Connected"; }
-    else if(state==="connecting"){ pill.classList.add("bg-amber-100","text-amber-700"); dot.classList.add("bg-amber-500"); text.textContent="Connecting…"; }
-    else if(state==="error"){ pill.classList.add("bg-rose-100","text-rose-700"); dot.classList.add("bg-rose-500"); text.textContent="Error"; }
-    else { pill.classList.add("bg-slate-200"); dot.classList.add("bg-slate-400"); text.textContent="Disconnected"; }
+    pill.className="pill glass text-slate-200"; dot.className="w-2 h-2 rounded-full";
+    if(state==="connected"){ pill.classList.add("bg-emerald-900/40"); dot.classList.add("bg-emerald-400"); text.textContent="Connected"; }
+    else if(state==="connecting"){ pill.classList.add("bg-amber-900/40"); dot.classList.add("bg-amber-400"); text.textContent="Connecting..."; }
+    else if(state==="error"){ pill.classList.add("bg-red-900/40"); dot.classList.add("bg-red-400"); text.textContent="Error"; }
+    else { pill.classList.add("bg-slate-800/60"); dot.classList.add("bg-slate-500"); text.textContent="Disconnected"; }
   }
 
   function updatePreview(){
-    var host=$('host').value.trim();
-    var port=parseInt($('port').value.trim(),10)||8884;
-    var path=$('path').value.trim()||"/mqtt";
-    var url = host?("wss://"+host+":"+port+path):"";
-    var el=$('wssPreview'); if(el) el.value = url;
+    var host=$("host").value.trim();
+    var port=parseInt($("port").value.trim(),10)||8884;
+    var path=$("path").value.trim()||"/mqtt";
+    var url=host?("wss://"+host+":"+port+path):"";
+    var el=$("wssPreview"); if(el) el.value=url;
   }
 
-  function generateRandomId(){
-    $('clientId').value = "web-"+Math.random().toString(16).slice(2,8);
-    log("Generated ClientID");
-  }
-
+  function generateRandomId(){ $("clientId").value="web-"+Math.random().toString(16).slice(2,8); log("Generated ClientID"); }
   function applyDemo(){
-    $('host').value="broker.hivemq.com";
-    $('port').value="8884";
-    $('path').value="/mqtt";
-    $('username').value="";
-    $('password').value="";
-    $('subTopic').value="test/web/"+Math.random().toString(16).slice(2,6);
-    updatePreview();
-    log("Demo presets applied. Click Connect.");
+    $("host").value="broker.hivemq.com";
+    $("port").value="8884";
+    $("path").value="/mqtt";
+    $("username").value="";
+    $("password").value="";
+    $("subTopic").value="test/web/"+Math.random().toString(16).slice(2,6);
+    updatePreview(); log("Demo presets applied. Click Connect.");
   }
-
-  function onClear(){ var el=$('log'); if(el) el.textContent=""; }
+  function onClear(){ var el=$("log"); if(el) el.textContent=""; }
   function onDisconnect(){ try{ if(client){ client.end(true); log("Disconnected"); } }catch(e){} }
 
-  // ===== MQTT CONNECT =====
   function connect(){
     updatePreview();
-    var host=$('host').value.trim();
-    var port=parseInt($('port').value.trim(),10)||8884;
-    var path=$('path').value.trim()||"/mqtt";
-    var clientId=($('clientId').value.trim()||("web-"+Math.random().toString(16).slice(2,8)));
-    var username=$('username').value.trim();
-    var password=$('password').value;
-    var subTopic=$('subTopic').value.trim();
-
+    var host=$("host").value.trim();
+    var port=parseInt($("port").value.trim(),10)||8884;
+    var path=$("path").value.trim()||"/mqtt";
+    var clientId=$("clientId").value.trim()||("web-"+Math.random().toString(16).slice(2,8));
+    var username=$("username").value.trim();
+    var password=$("password").value;
+    var subTopic=$("subTopic").value.trim();
     if(!host){ alert("Please enter broker host"); return; }
+
     var url="wss://"+host+":"+port+path;
-    log("Connecting to "+url+" as "+clientId+" …");
-    setConnState('connecting');
+    log("Connecting to "+url+" as "+clientId+" ...");
+    setConnState("connecting");
 
     if(client){ try{ client.end(true); }catch(e){} }
 
-    // pick lib symbol
     var MQTT = window.mqtt || window.MQTT || mqtt;
-    if(!MQTT){ setConnState('error'); log("[ERROR] mqtt library not loaded"); return; }
+    if(typeof MQTT==="undefined"){ setConnState("error"); log("[ERROR] mqtt library not loaded"); return; }
 
     client = MQTT.connect(url,{
       clientId: clientId,
@@ -217,8 +241,8 @@
       connectTimeout: 15000
     });
 
-    client.on('connect', function(){
-      setConnState('connected');
+    client.on("connect", function(){
+      setConnState("connected");
       log("Connected. Subscribing: "+subTopic);
       if(subTopic){
         client.subscribe(subTopic,{qos:0},function(err,granted){
@@ -227,67 +251,53 @@
         });
       }
     });
-    client.on('reconnect', function(){ setConnState('connecting'); log("Reconnecting..."); });
-    client.on('close', function(){ setConnState('disconnected'); log("Socket closed"); });
-    client.on('end', function(){ setConnState('disconnected'); log("Client end"); });
-    client.on('error', function(err){ setConnState('error'); log("Error: "+(err && err.message?err.message:String(err))); });
+    client.on("reconnect", function(){ setConnState("connecting"); log("Reconnecting..."); });
+    client.on("close", function(){ setConnState("disconnected"); log("Socket closed"); });
+    client.on("end", function(){ setConnState("disconnected"); log("Client end"); });
+    client.on("error", function(err){ setConnState("error"); log("Error: "+(err&&err.message?err.message:String(err))); });
 
-    client.on('message', function(topic, payload){
-      var text;
-      try{ text = new TextDecoder().decode(payload); }catch(_){ text = String(payload); }
-      log("← "+topic+": "+text);
-      try{
-        var data = JSON.parse(text);
-        updateUI(data);
-      }catch(e){ log("Parse JSON failed: "+e.message); }
+    client.on("message", function(topic, payload){
+      var text; try{ text=new TextDecoder().decode(payload); }catch(_){ text=String(payload); }
+      log("<= "+topic+": "+text);
+      try{ var data=JSON.parse(text); updateUI(data); }catch(e){ log("Parse JSON failed: "+e.message); }
     });
   }
 
-  // ===== Update UI from JSON =====
   function updateUI(data){
-    // mq2
     if(data.mq2){
-      var lvl = (typeof data.mq2.lvl==='number')?Math.max(0,Math.min(100,data.mq2.lvl)):0;
-      $('mq2Lvl').textContent = (isFinite(lvl)?lvl.toFixed(0):'--')+'%';
-      if(typeof data.mq2.v==='number') $('mq2Volt').textContent = data.mq2.v.toFixed(3)+' V';
-      if(typeof data.mq2.raw==='number') $('mq2RawBadge').textContent = 'raw: '+data.mq2.raw;
-      $('mq2Bar').style.width = lvl+'%';
+      var lvl=(typeof data.mq2.lvl==="number")?Math.max(0,Math.min(100,data.mq2.lvl)):0;
+      $("mq2Lvl").textContent=(isFinite(lvl)?lvl.toFixed(0):"--")+"%";
+      if(typeof data.mq2.v==="number") $("mq2Volt").textContent=data.mq2.v.toFixed(3)+" V";
+      if(typeof data.mq2.raw==="number") $("mq2RawBadge").textContent="raw: "+data.mq2.raw;
+      $("mq2Bar").style.width=lvl+"%";
     }
-    // pot
     if(data.pot){
-      var pct = (typeof data.pot.pct==='number')?Math.max(0,Math.min(100,data.pot.pct)):0;
-      $('potPct').textContent = (isFinite(pct)?pct.toFixed(0):'--')+'%';
-      if(typeof data.pot.v==='number') $('potVolt').textContent = data.pot.v.toFixed(3)+' V';
-      if(typeof data.pot.raw==='number') $('potRawBadge').textContent = 'raw: '+data.pot.raw;
-      $('potBar').style.width = pct+'%';
+      var pct=(typeof data.pot.pct==="number")?Math.max(0,Math.min(100,data.pot.pct)):0;
+      $("potPct").textContent=(isFinite(pct)?pct.toFixed(0):"--")+"%";
+      if(typeof data.pot.v==="number") $("potVolt").textContent=data.pot.v.toFixed(3)+" V";
+      if(typeof data.pot.raw==="number") $("potRawBadge").textContent="raw: "+data.pot.raw;
+      $("potBar").style.width=pct+"%";
     }
-    // water
     if(data.water){
-      var mode = String(data.water.mode||'').toLowerCase();
-      $('waterMode').textContent = 'mode: '+(mode||'unknown');
-      var analog=$('waterAnalog'), digital=$('waterDigital');
-      if(mode==='analog'){
-        analog.classList.remove('hidden'); digital.classList.add('hidden');
-        var wp = (typeof data.water.pct==='number')?Math.max(0,Math.min(100,data.water.pct)):0;
-        $('waterPct').textContent = wp.toFixed(0)+'%';
-        if(typeof data.water.v==='number') $('waterVolt').textContent = data.water.v.toFixed(3)+' V';
-        if(typeof data.water.raw==='number') $('waterRaw').textContent = String(data.water.raw);
-        $('waterBar').style.width = wp+'%';
-      } else if(mode==='digital'){
-        analog.classList.add('hidden'); digital.classList.remove('hidden');
-        $('waterDO').textContent = (data.water.do===0||data.water.do===1)?String(data.water.do):'--';
+      var mode=String(data.water.mode||"").toLowerCase();
+      $("waterMode").textContent="mode: "+(mode||"unknown");
+      var analog=$("waterAnalog"), digital=$("waterDigital");
+      if(mode==="analog"){
+        analog.classList.remove("hidden"); digital.classList.add("hidden");
+        var wp=(typeof data.water.pct==="number")?Math.max(0,Math.min(100,data.water.pct)):0;
+        $("waterPct").textContent=wp.toFixed(0)+"%";
+        if(typeof data.water.v==="number") $("waterVolt").textContent=data.water.v.toFixed(3)+" V";
+        if(typeof data.water.raw==="number") $("waterRaw").textContent=String(data.water.raw);
+        $("waterBar").style.width=wp+"%";
+      } else if(mode==="digital"){
+        analog.classList.add("hidden"); digital.classList.remove("hidden");
+        $("waterDO").textContent=(data.water.do===0||data.water.do===1)?String(data.water.do):"--";
       }
     }
   }
 
-  // init
-  (function init(){
-    generateRandomId();
-    updatePreview();
-    ['host','port','path'].forEach(function(id){
-      var el=$(id); if(el) el.addEventListener('input', updatePreview);
-    });
-  })();
+  // init default
+  (function(){ generateRandomId(); updatePreview(); ["host","port","path"].forEach(function(id){ var el=$(id); if(el) el.addEventListener("input",updatePreview); }); })();
   </script>
 </body>
 </html>
