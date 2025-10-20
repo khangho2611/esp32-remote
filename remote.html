@@ -1,209 +1,210 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ESP32 Dashboard — MQ2 / POT / DHT11</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ESP32 Dashboard — MQ2 & DHT11</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  body{background:linear-gradient(180deg,#0b1224 0%,#0f172a 60%,#111827 100%) fixed;}
-  .glass{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);backdrop-filter:blur(6px)}
-  .card{border-radius:1rem;padding:1rem}
-  .pill{display:inline-flex;align-items:center;gap:.5rem;border-radius:9999px;padding:.25rem .75rem;font-size:.875rem}
-  .badge{display:inline-block;border-radius:9999px;font-size:.75rem;padding:.125rem .5rem}
-  .mono{font-variant-ligatures:none}
-  .bar-bg{height:.75rem;border-radius:.75rem;background:rgba(255,255,255,.08)}
+  :root { color-scheme: dark; }
+  body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+  .glass{background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); backdrop-filter: blur(6px);}
+  .metric{font-size:clamp(28px,6vw,48px); line-height:1; font-weight:800}
+  .sub{opacity:.8}
+  .pill{display:inline-flex;gap:.5rem;align-items:center;padding:.35rem .75rem;border-radius:999px}
+  .dot{width:.55rem;height:.55rem;border-radius:999px}
+  .bar-bg{height:.75rem;border-radius:.75rem;background:rgba(255,255,255,.1)}
   .bar{height:.75rem;border-radius:.75rem;transition:width .25s ease}
+  .mono{font-variant-ligatures:none;font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
 </style>
 </head>
-<body class="text-slate-200">
-<div class="max-w-6xl mx-auto p-6">
-  <header class="mb-6 flex items-center justify-between">
-    <h1 class="text-3xl md:text-4xl font-extrabold"
-      style="background:linear-gradient(90deg,#60a5fa,#34d399,#f472b6);-webkit-background-clip:text;background-clip:text;color:transparent">
-      ESP32 Dashboard — MQ2 / POT / DHT11</h1>
-    <div id="connStatus" class="pill glass">
-      <span id="connDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+<body class="min-h-screen bg-slate-950 text-slate-200">
+<div class="max-w-5xl mx-auto p-5 md:p-8">
+
+  <!-- Header -->
+  <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+    <h1 class="text-3xl md:text-4xl font-extrabold">
+      ESP32 Dashboard <span class="text-slate-400 font-semibold">— MQ-2 & DHT11</span>
+    </h1>
+    <div id="connBadge" class="pill glass text-sm">
+      <span id="connDot" class="dot bg-slate-500"></span>
       <span id="connText">Disconnected</span>
     </div>
   </header>
 
   <!-- Kết nối -->
-  <section class="glass card mb-6">
-    <div class="grid md:grid-cols-3 gap-4">
-      <div><label class="block text-sm text-slate-400">Broker Host (WSS)</label>
-        <input id="host" class="mt-1 w-full rounded-xl px-3 py-2" value="824c1b62a8bb468fb4d8085acb663caa.s1.eu.hivemq.cloud"></div>
-      <div><label class="block text-sm text-slate-400">Port</label>
-        <input id="port" class="mt-1 w-full rounded-xl px-3 py-2" value="8884"></div>
-      <div><label class="block text-sm text-slate-400">Path</label>
-        <input id="path" class="mt-1 w-full rounded-xl px-3 py-2" value="/mqtt"></div>
-
+  <section class="glass rounded-2xl p-4 md:p-5 mb-6">
+    <div class="grid md:grid-cols-6 gap-3">
       <div class="md:col-span-3">
-        <label class="block text-sm text-slate-400">TLS WebSocket URL (preview)</label>
-        <input id="wssPreview" class="mt-1 w-full rounded-xl px-3 py-2 mono" readonly>
+        <label class="text-xs sub">Broker (host)</label>
+        <input id="host" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2"
+          value="824c1b62a8bb468fb4d8085acb663caa.s1.eu.hivemq.cloud">
+      </div>
+      <div>
+        <label class="text-xs sub">Port</label>
+        <input id="port" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2" value="8884">
+      </div>
+      <div>
+        <label class="text-xs sub">Path</label>
+        <input id="path" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2" value="/mqtt">
+      </div>
+      <div>
+        <label class="text-xs sub">Subscribe topic</label>
+        <input id="topic" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2"
+          value="esp32/sensors">
       </div>
 
       <div>
-        <label class="block text-sm text-slate-400">Client ID</label>
-        <div class="flex gap-3">
-          <input id="clientId" class="mt-1 w-full rounded-xl px-3 py-2 mono" placeholder="web-xxxxxx">
-          <button class="mt-1 px-3 py-2 rounded-xl bg-slate-100/10 hover:bg-slate-100/20" onclick="generateRandomId()">Random</button>
+        <label class="text-xs sub">Client ID</label>
+        <div class="flex gap-2">
+          <input id="cid" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2 mono"
+            placeholder="web-xxxxxx">
+          <button class="mt-1 px-3 rounded-xl bg-slate-100/10 hover:bg-slate-100/20"
+            onclick="randId()">Rand</button>
         </div>
       </div>
-      <div><label class="block text-sm text-slate-400">Username</label>
-        <input id="username" class="mt-1 w-full rounded-xl px-3 py-2" placeholder="your-username" value="admin123"></div>
-      <div><label class="block text-sm text-slate-400">Password</label>
-        <input id="password" type="password" class="mt-1 w-full rounded-xl px-3 py-2" placeholder="••••••••"></div>
-
-      <div class="md:col-span-2">
-        <label class="block text-sm text-slate-400">Subscribe Topic</label>
-        <input id="subTopic" class="mt-1 w-full rounded-xl px-3 py-2 mono" value="esp32/sensors">
+      <div>
+        <label class="text-xs sub">Username</label>
+        <input id="user" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2"
+          value="admin123">
       </div>
-      <div class="flex items-end gap-3">
-        <button class="px-4 py-2 rounded-xl bg-slate-100/10 hover:bg-slate-100/20" onclick="applyDemo()">Use Demo Broker</button>
-        <button class="px-4 py-2 rounded-xl bg-emerald-500 text-black hover:brightness-110" onclick="connect()">Connect</button>
-        <button class="px-4 py-2 rounded-xl bg-slate-100/10 hover:bg-slate-100/20" onclick="onDisconnect()">Disconnect</button>
+      <div>
+        <label class="text-xs sub">Password</label>
+        <input id="pass" type="password" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2"
+          placeholder="••••••••">
+      </div>
+
+      <div class="md:col-span-3 flex items-end gap-2">
+        <input id="wss" class="flex-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2 mono" readonly>
+        <button class="px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold hover:brightness-110"
+          onclick="connect()">Connect</button>
+        <button class="px-4 py-2 rounded-xl bg-slate-100/10 hover:bg-slate-100/20"
+          onclick="disconnect()">Disconnect</button>
       </div>
     </div>
   </section>
 
-  <!-- Thẻ cảm biến -->
+  <!-- Cards -->
   <section class="grid md:grid-cols-3 gap-4">
     <!-- MQ-2 -->
-    <div class="glass card">
+    <div class="glass rounded-2xl p-4">
       <div class="flex items-center justify-between">
-        <h2 class="font-semibold text-sky-300">MQ-2 Smoke</h2>
-        <span id="mq2RawBadge" class="badge" style="background:rgba(56,189,248,.2);color:#bae6fd">raw: --</span>
+        <div class="text-sky-300 font-semibold">MQ-2 Smoke</div>
+        <span id="mq2Raw" class="text-xs px-2 py-1 rounded-full bg-sky-400/10 border border-sky-400/20 mono">raw: --</span>
       </div>
       <div class="mt-4">
-        <div class="flex items-baseline gap-2">
-          <div id="mq2Lvl" class="text-3xl font-bold">--%</div>
-          <div id="mq2Volt" class="text-sm text-slate-400">-- V</div>
-        </div>
-        <div class="bar-bg mt-3"><div id="mq2Bar" class="bar" style="width:0%;background:linear-gradient(90deg,#fb7185,#ef4444)"></div></div>
+        <div class="metric" id="mq2Pct">--%</div>
+        <div class="sub mt-1" id="mq2Volt">-- V</div>
+        <div class="bar-bg mt-4"><div id="mq2Bar" class="bar" style="width:0%; background:linear-gradient(90deg,#fca5a5,#ef4444)"></div></div>
       </div>
     </div>
 
-    <!-- POT -->
-    <div class="glass card">
-      <div class="flex items-center justify-between">
-        <h2 class="font-semibold text-emerald-300">Potentiometer</h2>
-        <span id="potRawBadge" class="badge" style="background:rgba(16,185,129,.2);color:#a7f3d0">raw: --</span>
-      </div>
-      <div class="mt-4">
-        <div class="flex items-baseline gap-2">
-          <div id="potPct" class="text-3xl font-bold">--%</div>
-          <div id="potVolt" class="text-sm text-slate-400">-- V</div>
-        </div>
-        <div class="bar-bg mt-3"><div id="potBar" class="bar" style="width:0%;background:linear-gradient(90deg,#34d399,#22c55e)"></div></div>
-      </div>
+    <!-- DHT11: Temperature -->
+    <div class="glass rounded-2xl p-4">
+      <div class="text-amber-300 font-semibold">Temperature</div>
+      <div class="mt-4 metric" id="tempVal">--°C</div>
+      <div class="sub mt-1" id="dhtState">--</div>
     </div>
 
-    <!-- DHT11 -->
-    <div class="glass card">
-      <div class="flex items-center justify-between">
-        <h2 class="font-semibold text-indigo-300">DHT11</h2>
-        <span id="dhtOk" class="badge" style="background:rgba(99,102,241,.2);color:#c7d2fe">--</span>
-      </div>
-      <div class="mt-4 grid grid-cols-2 gap-4">
-        <div>
-          <div class="text-sm text-slate-400">Temperature</div>
-          <div id="dhtTemp" class="text-3xl font-bold">--°C</div>
-        </div>
-        <div>
-          <div class="text-sm text-slate-400">Humidity</div>
-          <div id="dhtHum" class="text-3xl font-bold">--%</div>
-        </div>
-      </div>
+    <!-- DHT11: Humidity -->
+    <div class="glass rounded-2xl p-4">
+      <div class="text-indigo-300 font-semibold">Humidity</div>
+      <div class="mt-4 metric" id="humVal">--%</div>
+      <div class="sub mt-1">DHT11</div>
     </div>
   </section>
 
   <!-- Console -->
-  <section class="glass card mt-6">
+  <section class="glass rounded-2xl p-4 mt-6">
     <div class="flex items-center justify-between mb-2">
-      <h3 class="font-semibold text-slate-300">Console</h3>
-      <button class="px-3 py-1 rounded-lg bg-slate-100/10 hover:bg-slate-100/20" onclick="onClear()">Clear</button>
+      <div class="font-semibold">Console</div>
+      <button class="px-3 py-1 rounded-lg bg-slate-100/10 hover:bg-slate-100/20" onclick="clearLog()">Clear</button>
     </div>
-    <pre id="log" class="whitespace-pre-wrap text-sm bg-[#0b1224] border border-slate-700 rounded-xl p-3 h-64 overflow-y-auto mono text-slate-300"></pre>
+    <pre id="log" class="mono bg-slate-900/70 border border-slate-800 rounded-xl p-3 h-56 overflow-y-auto text-slate-300"></pre>
   </section>
+
 </div>
 
-<!-- MQTT.js (2 CDN) -->
+<!-- MQTT.js -->
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
-
 <script>
-// ===== utils =====
-function $(id){return document.getElementById(id);}
-function log(msg){var el=$("log"); if(!el) return; var t=new Date().toLocaleTimeString(); el.textContent+="["+t+"] "+msg+"\\n"; el.scrollTop=el.scrollHeight;}
-log("[BOOT] page loaded");
-window.addEventListener("error",e=>log("[JS-ERROR] "+e.message));
+const $ = (id)=>document.getElementById(id);
+function log(m){ const el=$('log'); const t=new Date().toLocaleTimeString(); el.textContent += `[${t}] ${m}\n`; el.scrollTop=el.scrollHeight; }
+function randId(){ $('cid').value = 'web-'+Math.random().toString(16).slice(2,8); }
+function updateWSS(){
+  const host=$('host').value.trim();
+  const port=$('port').value.trim() || '8884';
+  const path=$('path').value.trim() || '/mqtt';
+  $('wss').value = host ? `wss://${host}:${port}${path}` : '';
+}
+['host','port','path'].forEach(id=>$(id).addEventListener('input',updateWSS));
+randId(); updateWSS();
 
-var client=null;
-function setConnState(s){var dot=$("connDot"),txt=$("connText"),pill=$("connStatus");
-  pill.className="pill glass"; dot.className="w-2 h-2 rounded-full";
-  if(s==="connected"){ pill.classList.add("bg-emerald-900/40"); dot.classList.add("bg-emerald-400"); txt.textContent="Connected";}
-  else if(s==="connecting"){ pill.classList.add("bg-amber-900/40"); dot.classList.add("bg-amber-400"); txt.textContent="Connecting...";}
-  else if(s==="error"){ pill.classList.add("bg-red-900/40"); dot.classList.add("bg-red-400"); txt.textContent="Error";}
-  else { pill.classList.add("bg-slate-800/60"); dot.classList.add("bg-slate-500"); txt.textContent="Disconnected";}}
-function updatePreview(){var host=$("host").value.trim();var port=parseInt($("port").value.trim(),10)||8884;var path=$("path").value.trim()||"/mqtt";$("wssPreview").value=host?("wss://"+host+":"+port+path):"";}
-function generateRandomId(){$("clientId").value="web-"+Math.random().toString(16).slice(2,8); log("Generated ClientID");}
-function applyDemo(){$("host").value="broker.hivemq.com";$("port").value="8884";$("path").value="/mqtt";$("username").value="";$("password").value="";$("subTopic").value="test/web/"+Math.random().toString(16).slice(2,6);updatePreview();log("Demo presets applied. Click Connect.");}
-function onClear(){var el=$("log"); if(el) el.textContent="";}
-function onDisconnect(){try{ if(client){ client.end(true); log("Disconnected"); } }catch(e){}}
+let client=null;
+function setConnState(state){
+  const dot=$('connDot'), txt=$('connText'), badge=$('connBadge');
+  dot.className='dot'; badge.className='pill glass text-sm';
+  if(state==='connected'){ dot.classList.add('bg-emerald-400'); txt.textContent='Connected'; }
+  else if(state==='connecting'){ dot.classList.add('bg-amber-400'); txt.textContent='Connecting...'; }
+  else if(state==='error'){ dot.classList.add('bg-rose-400'); txt.textContent='Error'; }
+  else { dot.classList.add('bg-slate-500'); txt.textContent='Disconnected'; }
+}
 
 function connect(){
-  updatePreview();
-  var host=$("host").value.trim(); var port=parseInt($("port").value.trim(),10)||8884;
-  var path=$("path").value.trim()||"/mqtt"; var clientId=$("clientId").value.trim()||("web-"+Math.random().toString(16).slice(2,8));
-  var username=$("username").value.trim(); var password=$("password").value; var subTopic=$("subTopic").value.trim();
-  if(!host){ alert("Please enter broker host"); return; }
-  var url="wss://"+host+":"+port+path; log("Connecting to "+url+" as "+clientId+" ..."); setConnState("connecting");
-  if(client){ try{ client.end(true);}catch(e){} }
-  var MQTT = window.mqtt || window.MQTT || mqtt;
-  if(typeof MQTT==="undefined"){ setConnState("error"); log("[ERROR] mqtt library not loaded"); return; }
-  client = MQTT.connect(url,{clientId:clientId,username:username||undefined,password:password||undefined,clean:true,reconnectPeriod:4000,connectTimeout:15000});
-  client.on("connect",function(){setConnState("connected"); log("Connected. Subscribing: "+subTopic);
-    if(subTopic){ client.subscribe(subTopic,{qos:0},function(err,g){ if(err) log("Subscribe error: "+err.message); else log("Subscribed: "+JSON.stringify(g));}); }
+  const host=$('host').value.trim();
+  const port=parseInt($('port').value.trim(),10)||8884;
+  const path=$('path').value.trim()||'/mqtt';
+  const topic=$('topic').value.trim()||'esp32/sensors';
+  const cid=$('cid').value.trim()||('web-'+Math.random().toString(16).slice(2,8));
+  const username=$('user').value.trim()||undefined;
+  const password=$('pass').value||undefined;
+  if(!host){ alert('Nhập broker host'); return; }
+
+  const url=`wss://${host}:${port}${path}`;
+  try{ if(client) client.end(true); }catch(e){}
+  setConnState('connecting');
+  log(`Connecting: ${url}  as ${cid}`);
+
+  client = mqtt.connect(url, {
+    clientId: cid, clean: true,
+    username, password,
+    reconnectPeriod: 4000,
+    connectTimeout: 15000,
   });
-  client.on("reconnect",function(){setConnState("connecting"); log("Reconnecting...");});
-  client.on("close",function(){setConnState("disconnected"); log("Socket closed");});
-  client.on("end",function(){setConnState("disconnected"); log("Client end");});
-  client.on("error",function(err){setConnState("error"); log("Error: "+(err&&err.message?err.message:String(err)));});
-  client.on("message",function(topic,payload){
-    var text; try{ text=new TextDecoder().decode(payload);}catch(_){ text=String(payload);}
-    log("<= "+topic+": "+text);
-    try{ var data=JSON.parse(text); updateUI(data);}catch(e){ log("Parse JSON failed: "+e.message); }
+
+  client.on('connect', ()=>{ setConnState('connected'); log('Connected'); client.subscribe(topic, {qos:0}, (err)=>{ if(err) log('Subscribe error: '+err.message); else log('Subscribed: '+topic); }); });
+  client.on('reconnect', ()=>{ setConnState('connecting'); log('Reconnecting...'); });
+  client.on('close', ()=>{ setConnState('disconnected'); log('Socket closed'); });
+  client.on('error', (err)=>{ setConnState('error'); log('Error: '+(err?.message||String(err))); });
+  client.on('message', (t, p)=>{
+    const text = new TextDecoder().decode(p);
+    log(`<= ${t}: ${text}`);
+    try{ const data = JSON.parse(text); updateUI(data); } catch(e){ /* ignore */ }
   });
 }
 
-function updateUI(data){
-  // MQ2
-  if(data.mq2){
-    var lvl=(typeof data.mq2.lvl==="number")?Math.max(0,Math.min(100,data.mq2.lvl)):0;
-    $("mq2Lvl").textContent=(isFinite(lvl)?lvl.toFixed(0):"--")+"%";
-    if(typeof data.mq2.v==="number") $("mq2Volt").textContent=data.mq2.v.toFixed(3)+" V";
-    if(typeof data.mq2.raw==="number") $("mq2RawBadge").textContent="raw: "+data.mq2.raw;
-    $("mq2Bar").style.width=lvl+"%";
-  }
-  // POT
-  if(data.pot){
-    var pct=(typeof data.pot.pct==="number")?Math.max(0,Math.min(100,data.pot.pct)):0;
-    $("potPct").textContent=(isFinite(pct)?pct.toFixed(0):"--")+"%";
-    if(typeof data.pot.v==="number") $("potVolt").textContent=data.pot.v.toFixed(3)+" V";
-    if(typeof data.pot.raw==="number") $("potRawBadge").textContent="raw: "+data.pot.raw;
-    $("potBar").style.width=pct+"%";
+function disconnect(){ try{ if(client){ client.end(true); log('Disconnected'); setConnState('disconnected'); } }catch(e){ log('Error closing: '+e.message); } }
+
+function updateUI(d){
+  // MQ-2
+  if(d.mq2){
+    const pct = clampNum(d.mq2.lvl, 0, 100);
+    $('mq2Pct').textContent = isNum(pct) ? pct.toFixed(0)+'%' : '--%';
+    $('mq2Bar').style.width = isNum(pct) ? pct+'%' : '0%';
+    $('mq2Volt').textContent = isNum(d.mq2.v) ? d.mq2.v.toFixed(3)+' V' : '-- V';
+    if(isNum(d.mq2.raw)) $('mq2Raw').textContent = 'raw: '+d.mq2.raw;
   }
   // DHT11
-  if(data.dht){
-    var ok = !!data.dht.ok;
-    $("dhtOk").textContent = ok ? "OK" : "READ FAIL";
-    $("dhtTemp").textContent = (typeof data.dht.t==="number") ? data.dht.t.toFixed(1)+"°C" : "--°C";
-    $("dhtHum").textContent  = (typeof data.dht.h==="number") ? data.dht.h.toFixed(0)+"%"  : "--%";
+  if(d.dht){
+    $('dhtState').textContent = d.dht.ok ? 'OK' : 'READ FAIL';
+    $('tempVal').textContent = isNum(d.dht.t) ? d.dht.t.toFixed(1)+'°C' : '--°C';
+    $('humVal').textContent  = isNum(d.dht.h) ? d.dht.h.toFixed(0)+'%' : '--%';
   }
 }
-
-// init
-(function(){ generateRandomId(); updatePreview(); ["host","port","path"].forEach(id=>{ var el=$(id); if(el) el.addEventListener("input",updatePreview); }); })();
+const isNum = (x)=> typeof x==='number' && Number.isFinite(x);
+const clampNum = (x,min,max)=> isNum(x) ? Math.min(max,Math.max(min,x)) : NaN;
 </script>
 </body>
 </html>
