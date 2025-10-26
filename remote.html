@@ -3,122 +3,132 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ESP32 Sensors — MQTT Web Dashboard</title>
+<title>ESP32 Sensors · DHT11 · MQ-2 · Water</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 <style>
   :root { color-scheme: dark }
-  body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial }
-  .card{background:rgba(15,23,42,.65);border:1px solid rgba(148,163,184,.15);backdrop-filter:blur(6px)}
-  .metric{font-size:clamp(28px,6vw,48px);line-height:1;font-weight:900}
-  .mono{font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-  .dot{width:.6rem;height:.6rem;border-radius:999px}
-  .bar{height:.75rem;border-radius:.75rem;background:linear-gradient(90deg,#22c55e,#ef4444)}
+  body  { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial }
+  .glass{ background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03));
+          border:1px solid rgba(255,255,255,.08); backdrop-filter: blur(10px) saturate(120%); }
+  .metric{ font-size:clamp(28px,7vw,52px); line-height:1; font-weight:900 }
+  .sub   { opacity:.8 }
+  .dot   { width:.6rem; height:.6rem; border-radius:999px }
+  .bar   { height:.7rem; border-radius:.7rem; transition:width .25s ease }
+  .card  { border-radius:20px; padding:18px }
 </style>
 </head>
-<body class="bg-slate-950 text-slate-200 min-h-screen">
-<div class="max-w-5xl mx-auto p-5 md:p-8 space-y-6">
+<body class="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 min-h-screen">
+<div class="max-w-6xl mx-auto p-6 space-y-6">
 
-  <!-- Header -->
+  <!-- HEADER -->
   <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-    <h1 class="text-3xl font-black">ESP32 Sensors <span class="text-slate-400 font-bold">/ DHT11 + MQ-2 + Water</span></h1>
-    <div id="stateBadge" class="flex items-center gap-2">
-      <span id="stateDot" class="dot bg-slate-500"></span>
-      <span id="stateText" class="text-sm">Disconnected</span>
+    <h1 class="text-3xl md:text-4xl font-black tracking-tight">
+      ESP32 Sensors <span class="text-slate-400 font-semibold">/ DHT11 · MQ-2 · Water</span>
+    </h1>
+    <div id="badge" class="glass card flex items-center gap-2 py-2 px-3">
+      <span id="dot" class="dot bg-slate-500"></span>
+      <span id="state" class="text-sm">Disconnected</span>
+      <span id="last" class="text-xs text-slate-400 ml-2 hidden">—</span>
     </div>
   </header>
 
-  <!-- Connect -->
-  <section class="card rounded-2xl p-4">
+  <!-- CONNECT PANEL -->
+  <section class="glass card">
     <div class="grid md:grid-cols-6 gap-3">
       <div class="md:col-span-3">
-        <label class="text-xs text-slate-400">Broker (host)</label>
+        <label class="text-xs sub">Broker (host)</label>
         <input id="host" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2"
                value="824c1b62a8bb468fb4d8085acb663caa.s1.eu.hivemq.cloud">
       </div>
       <div>
-        <label class="text-xs text-slate-400">Port</label>
+        <label class="text-xs sub">Port</label>
         <input id="port" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2" value="8884">
       </div>
       <div>
-        <label class="text-xs text-slate-400">Path</label>
+        <label class="text-xs sub">Path</label>
         <input id="path" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2" value="/mqtt">
       </div>
       <div>
-        <label class="text-xs text-slate-400">Topic</label>
+        <label class="text-xs sub">Topic</label>
         <input id="topic" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2"
                value="esp32/sensors">
       </div>
       <div>
-        <label class="text-xs text-slate-400">Client ID</label>
+        <label class="text-xs sub">Client ID</label>
         <div class="flex gap-2">
           <input id="cid" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2 mono">
           <button class="mt-1 px-3 rounded-xl bg-slate-100/10 hover:bg-slate-100/20" onclick="randId()">Rand</button>
         </div>
       </div>
       <div>
-        <label class="text-xs text-slate-400">Username</label>
+        <label class="text-xs sub">Username</label>
         <input id="user" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2" value="admin123">
       </div>
       <div>
-        <label class="text-xs text-slate-400">Password</label>
+        <label class="text-xs sub">Password</label>
         <input id="pass" type="password" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2" placeholder="••••••••">
       </div>
       <div class="md:col-span-2 flex items-end gap-2">
         <input id="wss" class="flex-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2 mono" readonly>
-        <button class="px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold hover:brightness-110" onclick="connect()">Connect</button>
-        <button class="px-4 py-2 rounded-xl bg-slate-100/10 hover:bg-slate-100/20" onclick="disconnect()">Disconnect</button>
+        <button class="px-4 py-2 rounded-xl bg-emerald-400 text-black font-semibold hover:brightness-110"
+                onclick="connect()">Connect</button>
+        <button class="px-4 py-2 rounded-xl bg-slate-100/10 hover:bg-slate-100/20"
+                onclick="disconnect()">Disconnect</button>
       </div>
     </div>
   </section>
 
-  <!-- Cards -->
+  <!-- METRICS -->
   <section class="grid md:grid-cols-3 gap-4">
     <!-- MQ-2 -->
-    <div class="card rounded-2xl p-4">
+    <div class="glass card">
       <div class="flex items-center justify-between">
         <div class="font-semibold text-sky-300">MQ-2 Smoke</div>
-        <span id="mq2Raw" class="text-xs mono px-2 py-1 rounded-full bg-slate-800 border border-slate-700">raw: --</span>
+        <span id="mq2Raw" class="text-xs px-2 py-1 rounded-full bg-sky-400/10 border border-sky-400/20 mono">raw: --</span>
       </div>
       <div class="mt-4">
         <div id="mq2Pct" class="metric">--%</div>
-        <div class="mt-3 bg-slate-800 rounded-xl overflow-hidden">
-          <div id="mq2Bar" class="bar" style="width:0%"></div>
+        <div class="mt-3 bg-slate-800/60 rounded-xl overflow-hidden">
+          <div id="mq2Bar" class="bar bg-gradient-to-r from-emerald-400 via-yellow-400 to-rose-500" style="width:0%"></div>
         </div>
       </div>
     </div>
 
     <!-- Temperature -->
-    <div class="card rounded-2xl p-4">
+    <div class="glass card">
       <div class="font-semibold text-amber-300">Temperature</div>
       <div id="tempVal" class="mt-4 metric">--°C</div>
+      <div id="tempHint" class="text-xs sub mt-1">DHT11</div>
     </div>
 
     <!-- Humidity + Water -->
-    <div class="card rounded-2xl p-4">
+    <div class="glass card">
       <div class="flex items-center justify-between">
         <div class="font-semibold text-indigo-300">Humidity</div>
-        <div id="waterBadge" class="flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-slate-800 border border-slate-700">
-          <span id="waterDot" class="dot bg-slate-500"></span><span id="waterText">--</span>
+        <div id="waterBadge" class="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/60 border border-slate-700 text-xs">
+          <span id="waterDot" class="dot bg-slate-500"></span>
+          <span id="waterText">Water: --</span>
         </div>
       </div>
       <div id="humVal" class="mt-4 metric">--%</div>
-      <div class="text-xs text-slate-400 mt-2">Water sensor: 0 = CÓ NƯỚC, 1 = KHÔ</div>
+      <div class="text-xs sub mt-1">0 = CÓ NƯỚC · 1 = KHÔ</div>
     </div>
   </section>
 
-  <!-- Console -->
-  <section class="card rounded-2xl p-4">
+  <!-- CONSOLE -->
+  <section class="glass card">
     <div class="flex items-center justify-between mb-2">
       <div class="font-semibold">Console</div>
       <button class="px-3 py-1 rounded-lg bg-slate-100/10 hover:bg-slate-100/20" onclick="clearLog()">Clear</button>
     </div>
-    <pre id="log" class="mono bg-slate-900 border border-slate-800 rounded-xl p-3 h-56 overflow-y-auto text-slate-300"></pre>
+    <pre id="log" class="mono bg-slate-950/50 border border-slate-800 rounded-xl p-3 h-56 overflow-y-auto text-slate-300"></pre>
   </section>
 
 </div>
 
+<!-- MQTT.js -->
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
 const $ = id => document.getElementById(id);
@@ -129,7 +139,7 @@ function updateWSS(){ const host=$('host').value.trim(), port=$('port').value.tr
 ['host','port','path'].forEach(id=>$(id).addEventListener('input',updateWSS)); randId(); updateWSS();
 
 let client=null;
-function setStatus(s){ const dot=$('stateDot'), txt=$('stateText'); dot.className='dot'; if(s==='connected'){dot.classList.add('bg-emerald-400'); txt.textContent='Connected'} else if(s==='connecting'){dot.classList.add('bg-amber-400'); txt.textContent='Connecting...'} else if(s==='error'){dot.classList.add('bg-rose-400'); txt.textContent='Error'} else {dot.classList.add('bg-slate-500'); txt.textContent='Disconnected'} }
+function setState(s){ const dot=$('dot'), st=$('state'); dot.className='dot'; if(s==='connected'){dot.classList.add('bg-emerald-400'); st.textContent='Connected'} else if(s==='connecting'){dot.classList.add('bg-amber-400'); st.textContent='Connecting...'} else if(s==='error'){dot.classList.add('bg-rose-400'); st.textContent='Error'} else {dot.classList.add('bg-slate-500'); st.textContent='Disconnected'} }
 
 function connect(){
   const host=$('host').value.trim(); if(!host){ alert('Nhập broker host'); return; }
@@ -138,44 +148,52 @@ function connect(){
     clientId: $('cid').value.trim() || ('web-'+Math.random().toString(16).slice(2,8)),
     username: $('user').value.trim() || undefined,
     password: $('pass').value || undefined,
-    clean: true, reconnectPeriod: 4000, connectTimeout: 15000
+    clean:true, reconnectPeriod: 4000, connectTimeout: 15000
   };
-  if(client){ try{client.end(true)}catch(e){} }
-  log(`Connecting ${url} as ${options.clientId}`);
-  setStatus('connecting');
+  try{ if(client) client.end(true); }catch(e){}
+  setState('connecting'); log(`Connecting ${url} as ${options.clientId}`);
   client = mqtt.connect(url, options);
+
   client.on('connect', ()=>{
-    setStatus('connected'); log('Connected');
+    setState('connected'); log('Connected');
     const topic = $('topic').value.trim() || 'esp32/sensors';
-    client.subscribe(topic, {qos:0}, (err)=> log(err?('Subscribe error: '+err.message):('Subscribed: '+topic)));
+    client.subscribe(topic, {qos:0}, err => log(err?('Subscribe error: '+err.message):('Subscribed: '+topic)));
   });
   client.on('message', (topic, payload)=>{
     const text = new TextDecoder().decode(payload);
     log(`<= ${topic}: ${text}`);
-    try{ const d = JSON.parse(text); updateUI(d); }catch(e){}
+    try { const d = JSON.parse(text); applyData(d); } catch(e) {}
   });
-  client.on('reconnect', ()=>{ setStatus('connecting'); log('Reconnecting...'); });
-  client.on('close', ()=>{ setStatus('disconnected'); log('Socket closed'); });
-  client.on('error', (e)=>{ setStatus('error'); log('Error: '+(e?.message||e)); });
+  client.on('reconnect', ()=>{ setState('connecting'); log('Reconnecting...'); });
+  client.on('close', ()=>{ setState('disconnected'); log('Socket closed'); });
+  client.on('error', e=>{ setState('error'); log('Error: '+(e?.message||e)); });
 }
-function disconnect(){ if(client){ client.end(true); log('Disconnected'); setStatus('disconnected'); } }
+function disconnect(){ if(client){ client.end(true); setState('disconnected'); log('Disconnected'); } }
 
-// === UPDATE UI for {"t":..., "h":..., "mq2":..., "water":0|1} ===
-function updateUI(d){
-  if(Number.isFinite(d.mq2)){
-    const raw = Math.min(1023, Math.max(0, d.mq2));
-    const pct = Math.round(raw/1023*100);
-    $('mq2Raw').textContent = 'raw: ' + raw;
-    $('mq2Pct').textContent = pct + '%';
-    $('mq2Bar').style.width = pct + '%';
+// === APPLY SENSOR DATA: {"t":..,"h":..,"mq2":..,"water":0|1} ===
+function applyData(d){
+  // last update
+  const last=$('last'); last.classList.remove('hidden'); last.textContent='Last update: '+new Date().toLocaleTimeString();
+
+  // MQ-2
+  if (Number.isFinite(d.mq2)) {
+    const raw=Math.max(0,Math.min(1023,d.mq2));
+    const pct=Math.round(raw/1023*100);
+    $('mq2Raw').textContent='raw: '+raw;
+    $('mq2Pct').textContent=pct+'%';
+    $('mq2Bar').style.width=pct+'%';
   }
-  if(Number.isFinite(d.t)) $('tempVal').textContent = d.t.toFixed(1) + '°C';
-  if(Number.isFinite(d.h)) $('humVal').textContent  = d.h.toFixed(0) + '%';
-  if(typeof d.water !== 'undefined'){
-    const dot=$('waterDot'), txt=$('waterText'), badge=$('waterBadge');
-    dot.className='dot';
-    if(d.water===0){ dot.classList.add('bg-sky-400'); txt.textContent='WET / CÓ NƯỚC'; badge.className='flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-sky-400/10 border border-sky-400/20'; }
-    else { dot.classList.add('bg-emerald-400'); txt.textContent='DRY / KHÔ'; badge.className='flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-emerald-400/10 border border-emerald-400/20'; }
+  // Temperature
+  if (Number.isFinite(d.t)) $('tempVal').textContent=d.t.toFixed(1)+'°C';
+  // Humidity
+  if (Number.isFinite(d.h)) $('humVal').textContent=d.h.toFixed(0)+'%';
+  // Water
+  if (typeof d.water!=='undefined') {
+    const isWet = (d.water===0);  // 0 = CÓ NƯỚC
+    const badge=$('waterBadge'), dot=$('waterDot'), txt=$('waterText');
+    dot.className='dot ' + (isWet?'bg-sky-400':'bg-emerald-400');
+    badge.className='flex items-center gap-2 px-3 py-1 rounded-full border ' + (isWet?'bg-sky-400/10 border-sky-400/20':'bg-emerald-400/10 border-emerald-400/20');
+    txt.textContent = isWet ? 'Water: WET / CÓ NƯỚC' : 'Water: DRY / KHÔ';
   }
 }
 </script>
