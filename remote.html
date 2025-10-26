@@ -3,85 +3,72 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ESP32 Dashboard — MQ2 & DHT11</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<title>ESP32 Sensors — MQTT Web Dashboard</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
-  :root { color-scheme: dark; }
-  body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-  .glass{background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); backdrop-filter: blur(6px);}
-  .metric{font-size:clamp(28px,6vw,48px); line-height:1; font-weight:800}
-  .sub{opacity:.8}
-  .pill{display:inline-flex;gap:.5rem;align-items:center;padding:.35rem .75rem;border-radius:999px}
-  .dot{width:.55rem;height:.55rem;border-radius:999px}
-  .bar-bg{height:.75rem;border-radius:.75rem;background:rgba(255,255,255,.1)}
-  .bar{height:.75rem;border-radius:.75rem;transition:width .25s ease;background:linear-gradient(90deg,#fca5a5,#ef4444)}
-  .mono{font-variant-ligatures:none;font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+  :root { color-scheme: dark }
+  body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial }
+  .card{background:rgba(15,23,42,.65);border:1px solid rgba(148,163,184,.15);backdrop-filter:blur(6px)}
+  .metric{font-size:clamp(28px,6vw,48px);line-height:1;font-weight:900}
+  .mono{font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .dot{width:.6rem;height:.6rem;border-radius:999px}
+  .bar{height:.75rem;border-radius:.75rem;background:linear-gradient(90deg,#22c55e,#ef4444)}
 </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-200">
-<div class="max-w-5xl mx-auto p-5 md:p-8">
+<body class="bg-slate-950 text-slate-200 min-h-screen">
+<div class="max-w-5xl mx-auto p-5 md:p-8 space-y-6">
 
   <!-- Header -->
-  <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-    <h1 class="text-3xl md:text-4xl font-extrabold">
-      ESP32 Dashboard <span class="text-slate-400 font-semibold">— MQ-2 & DHT11</span>
-    </h1>
-    <div id="connBadge" class="pill glass text-sm">
-      <span id="connDot" class="dot bg-slate-500"></span>
-      <span id="connText">Disconnected</span>
+  <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <h1 class="text-3xl font-black">ESP32 Sensors <span class="text-slate-400 font-bold">/ DHT11 + MQ-2 + Water</span></h1>
+    <div id="stateBadge" class="flex items-center gap-2">
+      <span id="stateDot" class="dot bg-slate-500"></span>
+      <span id="stateText" class="text-sm">Disconnected</span>
     </div>
   </header>
 
-  <!-- Kết nối -->
-  <section class="glass rounded-2xl p-4 md:p-5 mb-6">
+  <!-- Connect -->
+  <section class="card rounded-2xl p-4">
     <div class="grid md:grid-cols-6 gap-3">
       <div class="md:col-span-3">
-        <label class="text-xs sub">Broker (host)</label>
+        <label class="text-xs text-slate-400">Broker (host)</label>
         <input id="host" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2"
-          value="824c1b62a8bb468fb4d8085acb663caa.s1.eu.hivemq.cloud">
+               value="824c1b62a8bb468fb4d8085acb663caa.s1.eu.hivemq.cloud">
       </div>
       <div>
-        <label class="text-xs sub">Port</label>
+        <label class="text-xs text-slate-400">Port</label>
         <input id="port" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2" value="8884">
       </div>
       <div>
-        <label class="text-xs sub">Path</label>
+        <label class="text-xs text-slate-400">Path</label>
         <input id="path" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2" value="/mqtt">
       </div>
       <div>
-        <label class="text-xs sub">Subscribe topic</label>
+        <label class="text-xs text-slate-400">Topic</label>
         <input id="topic" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2"
-          value="esp32/sensors">
+               value="esp32/sensors">
       </div>
-
       <div>
-        <label class="text-xs sub">Client ID</label>
+        <label class="text-xs text-slate-400">Client ID</label>
         <div class="flex gap-2">
-          <input id="cid" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2 mono"
-            placeholder="web-xxxxxx">
-          <button class="mt-1 px-3 rounded-xl bg-slate-100/10 hover:bg-slate-100/20"
-            onclick="randId()">Rand</button>
+          <input id="cid" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2 mono">
+          <button class="mt-1 px-3 rounded-xl bg-slate-100/10 hover:bg-slate-100/20" onclick="randId()">Rand</button>
         </div>
       </div>
       <div>
-        <label class="text-xs sub">Username</label>
-        <input id="user" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2"
-          value="admin123">
+        <label class="text-xs text-slate-400">Username</label>
+        <input id="user" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2" value="admin123">
       </div>
       <div>
-        <label class="text-xs sub">Password</label>
-        <input id="pass" type="password" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2"
-          placeholder="••••••••">
+        <label class="text-xs text-slate-400">Password</label>
+        <input id="pass" type="password" class="w-full mt-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2" placeholder="••••••••">
       </div>
-
-      <div class="md:col-span-3 flex items-end gap-2">
+      <div class="md:col-span-2 flex items-end gap-2">
         <input id="wss" class="flex-1 rounded-xl bg-slate-900/60 border border-slate-700 px-3 py-2 mono" readonly>
-        <button class="px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold hover:brightness-110"
-          onclick="connect()">Connect</button>
-        <button class="px-4 py-2 rounded-xl bg-slate-100/10 hover:bg-slate-100/20"
-          onclick="disconnect()">Disconnect</button>
+        <button class="px-4 py-2 rounded-xl bg-emerald-500 text-black font-semibold hover:brightness-110" onclick="connect()">Connect</button>
+        <button class="px-4 py-2 rounded-xl bg-slate-100/10 hover:bg-slate-100/20" onclick="disconnect()">Disconnect</button>
       </div>
     </div>
   </section>
@@ -89,150 +76,108 @@
   <!-- Cards -->
   <section class="grid md:grid-cols-3 gap-4">
     <!-- MQ-2 -->
-    <div class="glass rounded-2xl p-4">
+    <div class="card rounded-2xl p-4">
       <div class="flex items-center justify-between">
-        <div class="text-sky-300 font-semibold">MQ-2 Smoke</div>
-        <span id="mq2Raw" class="text-xs px-2 py-1 rounded-full bg-sky-400/10 border border-sky-400/20 mono">raw: --</span>
+        <div class="font-semibold text-sky-300">MQ-2 Smoke</div>
+        <span id="mq2Raw" class="text-xs mono px-2 py-1 rounded-full bg-slate-800 border border-slate-700">raw: --</span>
       </div>
       <div class="mt-4">
-        <div class="metric" id="mq2Pct">--%</div>
-        <div class="sub mt-1" id="mq2Info">scale: 0–1023</div>
-        <div class="bar-bg mt-4"><div id="mq2Bar" class="bar" style="width:0%"></div></div>
+        <div id="mq2Pct" class="metric">--%</div>
+        <div class="mt-3 bg-slate-800 rounded-xl overflow-hidden">
+          <div id="mq2Bar" class="bar" style="width:0%"></div>
+        </div>
       </div>
     </div>
 
-    <!-- DHT11: Temperature -->
-    <div class="glass rounded-2xl p-4">
-      <div class="text-amber-300 font-semibold">Temperature</div>
-      <div class="mt-4 metric" id="tempVal">--°C</div>
-      <div class="sub mt-1">DHT11</div>
+    <!-- Temperature -->
+    <div class="card rounded-2xl p-4">
+      <div class="font-semibold text-amber-300">Temperature</div>
+      <div id="tempVal" class="mt-4 metric">--°C</div>
     </div>
 
-    <!-- DHT11: Humidity + Water -->
-    <div class="glass rounded-2xl p-4">
+    <!-- Humidity + Water -->
+    <div class="card rounded-2xl p-4">
       <div class="flex items-center justify-between">
-        <div class="text-indigo-300 font-semibold">Humidity</div>
-        <span id="waterPill" class="pill text-xs bg-slate-100/5 border border-slate-100/10">
-          <span class="dot bg-slate-500"></span><span id="waterText">--</span>
-        </span>
+        <div class="font-semibold text-indigo-300">Humidity</div>
+        <div id="waterBadge" class="flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-slate-800 border border-slate-700">
+          <span id="waterDot" class="dot bg-slate-500"></span><span id="waterText">--</span>
+        </div>
       </div>
-      <div class="mt-4 metric" id="humVal">--%</div>
-      <div class="sub mt-1">Water: 0=Có nước, 1=Khô</div>
+      <div id="humVal" class="mt-4 metric">--%</div>
+      <div class="text-xs text-slate-400 mt-2">Water sensor: 0 = CÓ NƯỚC, 1 = KHÔ</div>
     </div>
   </section>
 
   <!-- Console -->
-  <section class="glass rounded-2xl p-4 mt-6">
+  <section class="card rounded-2xl p-4">
     <div class="flex items-center justify-between mb-2">
       <div class="font-semibold">Console</div>
       <button class="px-3 py-1 rounded-lg bg-slate-100/10 hover:bg-slate-100/20" onclick="clearLog()">Clear</button>
     </div>
-    <pre id="log" class="mono bg-slate-900/70 border border-slate-800 rounded-xl p-3 h-56 overflow-y-auto text-slate-300"></pre>
+    <pre id="log" class="mono bg-slate-900 border border-slate-800 rounded-xl p-3 h-56 overflow-y-auto text-slate-300"></pre>
   </section>
 
 </div>
 
-<!-- MQTT.js -->
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
-const $ = (id)=>document.getElementById(id);
-function log(m){ const el=$('log'); const t=new Date().toLocaleTimeString(); el.textContent += `[${t}] ${m}\n`; el.scrollTop=el.scrollHeight; }
+const $ = id => document.getElementById(id);
+function log(m){ const el=$('log'); el.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`; el.scrollTop=el.scrollHeight; }
 function clearLog(){ $('log').textContent=''; }
-function randId(){ $('cid').value = 'web-'+Math.random().toString(16).slice(2,8); }
-function updateWSS(){
-  const host=$('host').value.trim();
-  const port=$('port').value.trim() || '8884';
-  const path=$('path').value.trim() || '/mqtt';
-  $('wss').value = host ? `wss://${host}:${port}${path}` : '';
-}
-['host','port','path'].forEach(id=>$(id).addEventListener('input',updateWSS));
-randId(); updateWSS();
+function randId(){ $('cid').value = 'web-' + Math.random().toString(16).slice(2,8); }
+function updateWSS(){ const host=$('host').value.trim(), port=$('port').value.trim()||'8884', path=$('path').value.trim()||'/mqtt'; $('wss').value = host?`wss://${host}:${port}${path}`:''; }
+['host','port','path'].forEach(id=>$(id).addEventListener('input',updateWSS)); randId(); updateWSS();
 
 let client=null;
-function setConnState(state){
-  const dot=$('connDot'), txt=$('connText'), badge=$('connBadge');
-  dot.className='dot'; badge.className='pill glass text-sm';
-  if(state==='connected'){ dot.classList.add('bg-emerald-400'); txt.textContent='Connected'; }
-  else if(state==='connecting'){ dot.classList.add('bg-amber-400'); txt.textContent='Connecting...'; }
-  else if(state==='error'){ dot.classList.add('bg-rose-400'); txt.textContent='Error'; }
-  else { dot.classList.add('bg-slate-500'); txt.textContent='Disconnected'; }
-}
+function setStatus(s){ const dot=$('stateDot'), txt=$('stateText'); dot.className='dot'; if(s==='connected'){dot.classList.add('bg-emerald-400'); txt.textContent='Connected'} else if(s==='connecting'){dot.classList.add('bg-amber-400'); txt.textContent='Connecting...'} else if(s==='error'){dot.classList.add('bg-rose-400'); txt.textContent='Error'} else {dot.classList.add('bg-slate-500'); txt.textContent='Disconnected'} }
 
 function connect(){
-  const host=$('host').value.trim();
-  const port=parseInt($('port').value.trim(),10)||8884;
-  const path=$('path').value.trim()||'/mqtt';
-  const topic=$('topic').value.trim()||'esp32/sensors';
-  const cid=$('cid').value.trim()||('web-'+Math.random().toString(16).slice(2,8));
-  const username=$('user').value.trim()||undefined;
-  const password=$('pass').value||undefined;
-  if(!host){ alert('Nhập broker host'); return; }
-
-  const url=`wss://${host}:${port}${path}`;
-  try{ if(client) client.end(true); }catch(e){}
-  setConnState('connecting');
-  log(`Connecting: ${url}  as ${cid}`);
-
-  client = mqtt.connect(url, {
-    clientId: cid, clean: true,
-    username, password,
-    reconnectPeriod: 4000,
-    connectTimeout: 15000,
+  const host=$('host').value.trim(); if(!host){ alert('Nhập broker host'); return; }
+  const url=`wss://${host}:${$('port').value.trim()||'8884'}${$('path').value.trim()||'/mqtt'}`;
+  const options={
+    clientId: $('cid').value.trim() || ('web-'+Math.random().toString(16).slice(2,8)),
+    username: $('user').value.trim() || undefined,
+    password: $('pass').value || undefined,
+    clean: true, reconnectPeriod: 4000, connectTimeout: 15000
+  };
+  if(client){ try{client.end(true)}catch(e){} }
+  log(`Connecting ${url} as ${options.clientId}`);
+  setStatus('connecting');
+  client = mqtt.connect(url, options);
+  client.on('connect', ()=>{
+    setStatus('connected'); log('Connected');
+    const topic = $('topic').value.trim() || 'esp32/sensors';
+    client.subscribe(topic, {qos:0}, (err)=> log(err?('Subscribe error: '+err.message):('Subscribed: '+topic)));
   });
-
-  client.on('connect', ()=>{ setConnState('connected'); log('Connected'); client.subscribe(topic, {qos:0}, (err)=>{ if(err) log('Subscribe error: '+err.message); else log('Subscribed: '+topic); }); });
-  client.on('reconnect', ()=>{ setConnState('connecting'); log('Reconnecting...'); });
-  client.on('close', ()=>{ setConnState('disconnected'); log('Socket closed'); });
-  client.on('error', (err)=>{ setConnState('error'); log('Error: '+(err?.message||String(err))); });
-  client.on('message', (t, p)=>{
-    const text = new TextDecoder().decode(p);
-    log(`<= ${t}: ${text}`);
-    try{ const data = JSON.parse(text); updateUI(data); } catch(e){ /* ignore */ }
+  client.on('message', (topic, payload)=>{
+    const text = new TextDecoder().decode(payload);
+    log(`<= ${topic}: ${text}`);
+    try{ const d = JSON.parse(text); updateUI(d); }catch(e){}
   });
+  client.on('reconnect', ()=>{ setStatus('connecting'); log('Reconnecting...'); });
+  client.on('close', ()=>{ setStatus('disconnected'); log('Socket closed'); });
+  client.on('error', (e)=>{ setStatus('error'); log('Error: '+(e?.message||e)); });
 }
+function disconnect(){ if(client){ client.end(true); log('Disconnected'); setStatus('disconnected'); } }
 
-function disconnect(){ try{ if(client){ client.end(true); log('Disconnected'); setConnState('disconnected'); } }catch(e){ log('Error closing: '+e.message); } }
-
-// ==== UI for flat JSON: {t, h, mq2, water} ====
+// === UPDATE UI for {"t":..., "h":..., "mq2":..., "water":0|1} ===
 function updateUI(d){
-  // MQ-2 (raw 0..1023 => %)
-  if (isNum(d.mq2)) {
-    const raw = clampNum(d.mq2, 0, 1023);
-    const pct = Math.round((raw / 1023) * 100);
-    $('mq2Raw').textContent = 'raw: ' + raw.toString();
+  if(Number.isFinite(d.mq2)){
+    const raw = Math.min(1023, Math.max(0, d.mq2));
+    const pct = Math.round(raw/1023*100);
+    $('mq2Raw').textContent = 'raw: ' + raw;
     $('mq2Pct').textContent = pct + '%';
     $('mq2Bar').style.width = pct + '%';
   }
-
-  // Temperature
-  if (isNum(d.t)) $('tempVal').textContent = d.t.toFixed(1) + '°C';
-
-  // Humidity
-  if (isNum(d.h)) $('humVal').textContent = d.h.toFixed(0) + '%';
-
-  // Water: 0=Có nước, 1=Khô
-  if (typeof d.water !== 'undefined') {
-    const pill = $('waterPill');
-    const dot = pill.querySelector('.dot');
-    const txt = $('waterText');
-    // reset class
-    dot.className = 'dot';
-    if (d.water === 0) {
-      // Có nước
-      dot.classList.add('bg-sky-400');
-      txt.textContent = 'WET / CÓ NƯỚC';
-      pill.className = 'pill text-xs bg-sky-400/10 border border-sky-400/20';
-    } else {
-      // Khô
-      dot.classList.add('bg-emerald-400');
-      txt.textContent = 'DRY / KHÔ';
-      pill.className = 'pill text-xs bg-emerald-400/10 border border-emerald-400/20';
-    }
+  if(Number.isFinite(d.t)) $('tempVal').textContent = d.t.toFixed(1) + '°C';
+  if(Number.isFinite(d.h)) $('humVal').textContent  = d.h.toFixed(0) + '%';
+  if(typeof d.water !== 'undefined'){
+    const dot=$('waterDot'), txt=$('waterText'), badge=$('waterBadge');
+    dot.className='dot';
+    if(d.water===0){ dot.classList.add('bg-sky-400'); txt.textContent='WET / CÓ NƯỚC'; badge.className='flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-sky-400/10 border border-sky-400/20'; }
+    else { dot.classList.add('bg-emerald-400'); txt.textContent='DRY / KHÔ'; badge.className='flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-emerald-400/10 border border-emerald-400/20'; }
   }
 }
-
-const isNum = (x)=> typeof x==='number' && Number.isFinite(x);
-const clampNum = (x,min,max)=> isNum(x) ? Math.min(max,Math.max(min,x)) : 0;
 </script>
 </body>
 </html>
