@@ -16,7 +16,7 @@
   .pill{display:inline-flex;gap:.5rem;align-items:center;padding:.35rem .75rem;border-radius:999px}
   .dot{width:.55rem;height:.55rem;border-radius:999px}
   .bar-bg{height:.75rem;border-radius:.75rem;background:rgba(255,255,255,.1)}
-  .bar{height:.75rem;border-radius:.75rem;transition:width .25s ease}
+  .bar{height:.75rem;border-radius:.75rem;transition:width .25s ease;background:linear-gradient(90deg,#fca5a5,#ef4444)}
   .mono{font-variant-ligatures:none;font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
 </style>
 </head>
@@ -96,8 +96,8 @@
       </div>
       <div class="mt-4">
         <div class="metric" id="mq2Pct">--%</div>
-        <div class="sub mt-1" id="mq2Volt">-- V</div>
-        <div class="bar-bg mt-4"><div id="mq2Bar" class="bar" style="width:0%; background:linear-gradient(90deg,#fca5a5,#ef4444)"></div></div>
+        <div class="sub mt-1" id="mq2Info">scale: 0–1023</div>
+        <div class="bar-bg mt-4"><div id="mq2Bar" class="bar" style="width:0%"></div></div>
       </div>
     </div>
 
@@ -105,14 +105,19 @@
     <div class="glass rounded-2xl p-4">
       <div class="text-amber-300 font-semibold">Temperature</div>
       <div class="mt-4 metric" id="tempVal">--°C</div>
-      <div class="sub mt-1" id="dhtState">--</div>
+      <div class="sub mt-1">DHT11</div>
     </div>
 
-    <!-- DHT11: Humidity -->
+    <!-- DHT11: Humidity + Water -->
     <div class="glass rounded-2xl p-4">
-      <div class="text-indigo-300 font-semibold">Humidity</div>
+      <div class="flex items-center justify-between">
+        <div class="text-indigo-300 font-semibold">Humidity</div>
+        <span id="waterPill" class="pill text-xs bg-slate-100/5 border border-slate-100/10">
+          <span class="dot bg-slate-500"></span><span id="waterText">--</span>
+        </span>
+      </div>
       <div class="mt-4 metric" id="humVal">--%</div>
-      <div class="sub mt-1">DHT11</div>
+      <div class="sub mt-1">Water: 0=Có nước, 1=Khô</div>
     </div>
   </section>
 
@@ -132,6 +137,7 @@
 <script>
 const $ = (id)=>document.getElementById(id);
 function log(m){ const el=$('log'); const t=new Date().toLocaleTimeString(); el.textContent += `[${t}] ${m}\n`; el.scrollTop=el.scrollHeight; }
+function clearLog(){ $('log').textContent=''; }
 function randId(){ $('cid').value = 'web-'+Math.random().toString(16).slice(2,8); }
 function updateWSS(){
   const host=$('host').value.trim();
@@ -187,24 +193,46 @@ function connect(){
 
 function disconnect(){ try{ if(client){ client.end(true); log('Disconnected'); setConnState('disconnected'); } }catch(e){ log('Error closing: '+e.message); } }
 
+// ==== UI for flat JSON: {t, h, mq2, water} ====
 function updateUI(d){
-  // MQ-2
-  if(d.mq2){
-    const pct = clampNum(d.mq2.lvl, 0, 100);
-    $('mq2Pct').textContent = isNum(pct) ? pct.toFixed(0)+'%' : '--%';
-    $('mq2Bar').style.width = isNum(pct) ? pct+'%' : '0%';
-    $('mq2Volt').textContent = isNum(d.mq2.v) ? d.mq2.v.toFixed(3)+' V' : '-- V';
-    if(isNum(d.mq2.raw)) $('mq2Raw').textContent = 'raw: '+d.mq2.raw;
+  // MQ-2 (raw 0..1023 => %)
+  if (isNum(d.mq2)) {
+    const raw = clampNum(d.mq2, 0, 1023);
+    const pct = Math.round((raw / 1023) * 100);
+    $('mq2Raw').textContent = 'raw: ' + raw.toString();
+    $('mq2Pct').textContent = pct + '%';
+    $('mq2Bar').style.width = pct + '%';
   }
-  // DHT11
-  if(d.dht){
-    $('dhtState').textContent = d.dht.ok ? 'OK' : 'READ FAIL';
-    $('tempVal').textContent = isNum(d.dht.t) ? d.dht.t.toFixed(1)+'°C' : '--°C';
-    $('humVal').textContent  = isNum(d.dht.h) ? d.dht.h.toFixed(0)+'%' : '--%';
+
+  // Temperature
+  if (isNum(d.t)) $('tempVal').textContent = d.t.toFixed(1) + '°C';
+
+  // Humidity
+  if (isNum(d.h)) $('humVal').textContent = d.h.toFixed(0) + '%';
+
+  // Water: 0=Có nước, 1=Khô
+  if (typeof d.water !== 'undefined') {
+    const pill = $('waterPill');
+    const dot = pill.querySelector('.dot');
+    const txt = $('waterText');
+    // reset class
+    dot.className = 'dot';
+    if (d.water === 0) {
+      // Có nước
+      dot.classList.add('bg-sky-400');
+      txt.textContent = 'WET / CÓ NƯỚC';
+      pill.className = 'pill text-xs bg-sky-400/10 border border-sky-400/20';
+    } else {
+      // Khô
+      dot.classList.add('bg-emerald-400');
+      txt.textContent = 'DRY / KHÔ';
+      pill.className = 'pill text-xs bg-emerald-400/10 border border-emerald-400/20';
+    }
   }
 }
+
 const isNum = (x)=> typeof x==='number' && Number.isFinite(x);
-const clampNum = (x,min,max)=> isNum(x) ? Math.min(max,Math.max(min,x)) : NaN;
+const clampNum = (x,min,max)=> isNum(x) ? Math.min(max,Math.max(min,x)) : 0;
 </script>
 </body>
 </html>
